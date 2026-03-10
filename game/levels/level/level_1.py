@@ -16,9 +16,12 @@ LEVEL_1: dict[str, object] = {
         {"pos": (2, 1), "type": "forest"},
         {"pos": (8, 1), "type": "forest"},
     ],
+    "deployment_zones": {
+        # 中文注释：玩家部署区使用 DualGrid 全局坐标。
+        "player": [(0, 0), (1, 0), (0, 1), (1, 1), (0, 2), (1, 2)],
+    },
     "spawns": {
-        # 中文注释：出生点使用 DualGrid 的全局坐标（含 gap 偏移）。
-        "player": [(0, 0), (1, 2)],
+        # 中文注释：敌方出生点仍用于进入战斗时自动生成敌人。
         "enemy": [(9, 0), (8, 2)],
     },
 }

@@ -5,9 +5,9 @@ from __future__ import annotations
 
 SCENARIO_1: dict[str, object] = {
     "level": "level_1",
-    "player_units": [
-        {"type": "Hero", "spawn": 0},
-        {"type": "Knight", "spawn": 1},
+    "player_roster": [
+        {"type": "Hero"},
+        {"type": "Knight"},
     ],
     "enemy_units": [
         {"type": "Goblin", "spawn": 0},

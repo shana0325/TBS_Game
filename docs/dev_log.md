@@ -108,3 +108,11 @@
 ## Stage 27 - Level / Scenario / SpawnSystem
 - Added `level` (map/spawn data), `scenario` (battle composition/rules), and `spawn_system` (unit instantiation) modules with clear responsibilities.
 - Updated `Game` initialization to load level/scenario data and spawn units through `SpawnSystem` without changing combat/movement/AI runtime logic.
+
+## Stage 28 - Screen System
+- Added `ScreenBase`, `ScreenManager`, and four screens (`MainMenu`, `LevelSelect`, `Battle`, `Result`) to manage non-battle flow.
+- `BattleScreen` now loads Level/Scenario data, calls `SpawnSystem`, and creates `Game` instance while preserving existing battle runtime systems.
+
+## Stage 29 - Deployment Phase
+- Added `DeploymentScreen` between LevelSelect and Battle, with deployment-zone highlight and roster-based unit placement.
+- Updated level/scenario/spawn flow: level now defines `deployment_zones`, scenario uses `player_roster`, and `SpawnSystem` now supports `spawn_player_units(...)` for deployment results.

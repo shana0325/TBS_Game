@@ -19,9 +19,10 @@ def load_level(level_name: str) -> dict[str, object]:
     return {
         "map": dict(level["map"]),
         "terrain": list(level.get("terrain", [])),
+        "deployment_zones": {
+            "player": list(level.get("deployment_zones", {}).get("player", [])),
+        },
         "spawns": {
-            "player": list(level.get("spawns", {}).get("player", [])),
             "enemy": list(level.get("spawns", {}).get("enemy", [])),
         },
     }
-

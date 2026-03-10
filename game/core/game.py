@@ -12,13 +12,13 @@ from game.controllers.enemy_controller import EnemyController
 from game.core.game_state import GameState
 from game.entity.unit import Unit
 from game.levels.level.level_loader import load_level
+from game.levels.scenario.scenario_loader import load_scenario
+from game.levels.systems.spawn_system import SpawnSystem
 from game.render.attack_highlight_renderer import draw_attack_highlights
 from game.render.highlight_renderer import draw_move_highlights
 from game.render.map_renderer import TILE_SIZE, render_map
 from game.render.path_renderer import draw_path_preview
-from game.levels.scenario.scenario_loader import load_scenario
 from game.state.idle_state import IdleState
-from game.levels.systems.spawn_system import SpawnSystem
 from game.ui.action_menu import ActionMenu
 from game.ui.ui_system import UISystem
 
@@ -41,31 +41,39 @@ TERRAIN_PRESETS: dict[str, dict[str, int]] = {
 class Game:
     """游戏控制器：封装主循环中的事件、逻辑更新、渲染。"""
 
-    def __init__(self) -> None:
-        # 中文注释：按三层配置流程加载关卡与场景。
-        self.level_data = load_level("level_1")
-        self.scenario_data = load_scenario("scenario_1")
-        scenario_level = str(self.scenario_data.get("level", ""))
-        if scenario_level != "level_1":
-            raise ValueError(f"Scenario level mismatch: expected level_1, got {scenario_level}")
+    def __init__(
+        self,
+        level_data: dict[str, object] | None = None,
+        scenario_data: dict[str, object] | None = None,
+        grid: DualGrid | None = None,
+        player_units: list[Unit] | None = None,
+        enemy_units: list[Unit] | None = None,
+    ) -> None:
+        # 中文注释：允许外部 Screen 注入关卡/场景/实体；未注入时走默认加载流程。
+        self.level_data = level_data if level_data is not None else load_level("level_1")
+        self.scenario_data = scenario_data if scenario_data is not None else load_scenario("scenario_1")
 
-        map_config = self.level_data.get("map", {})
-        side_width = int(map_config.get("side_width", 4))
-        grid_height = int(map_config.get("height", 3))
-        gap_width = int(map_config.get("gap_width", 2))
+        if grid is None:
+            map_config = self.level_data.get("map", {})
+            side_width = int(map_config.get("side_width", 4))
+            grid_height = int(map_config.get("height", 3))
+            gap_width = int(map_config.get("gap_width", 2))
+            self.grid = DualGrid(side_width=side_width, height=grid_height, gap_width=gap_width)
+            self._apply_level_terrain(self.level_data)
+        else:
+            self.grid = grid
 
-        # 中文注释：战场由左右两个独立子网格组成，中间空区不可通行。
-        self.grid = DualGrid(side_width=side_width, height=grid_height, gap_width=gap_width)
-        self._apply_level_terrain(self.level_data)
-
-        # 中文注释：通过 SpawnSystem 读取关卡出生点与场景单位配置创建实体。
-        self.player_units, self.enemy_units = SpawnSystem.spawn_units(
-            grid=self.grid,
-            level_data=self.level_data,
-            scenario_data=self.scenario_data,
-            player_team_id=PLAYER_TEAM_ID,
-            enemy_team_id=ENEMY_TEAM_ID,
-        )
+        if player_units is None or enemy_units is None:
+            self.player_units, self.enemy_units = SpawnSystem.spawn_units(
+                grid=self.grid,
+                level_data=self.level_data,
+                scenario_data=self.scenario_data,
+                player_team_id=PLAYER_TEAM_ID,
+                enemy_team_id=ENEMY_TEAM_ID,
+            )
+        else:
+            self.player_units = player_units
+            self.enemy_units = enemy_units
 
         self.units = [*self.player_units, *self.enemy_units]
         self.turn_manager = TurnManager(
@@ -108,14 +116,10 @@ class Game:
             self.battlefield_rect.y + (self.battlefield_rect.height - self.map_pixel_height) // 2,
         )
 
-        # 中文注释：保留原有 enum，用于渲染条件与兼容旧逻辑。
         self.game_state = GameState.IDLE
-        # 中文注释：引入 State Pattern，Game 仅维护当前状态对象并调用其 handle_input。
         self.current_state = IdleState()
-        # 中文注释：当前选中单位（用于 UI 信息查看）。
         self.selected_unit: Unit | None = None
 
-        # 中文注释：行动菜单放在底部右侧 Action Panel，按钮垂直排列。
         self.action_menu = ActionMenu(
             x=self.action_panel_rect.x + 24,
             y=self.action_panel_rect.y + 86,
@@ -123,18 +127,13 @@ class Game:
             item_height=44,
         )
 
-        # 中文注释：CombatSystem 统一负责攻击距离与范围判定。
         self.combat_system = CombatSystem(self.grid)
-
-        # 中文注释：敌方回合逻辑委托给 EnemyController 处理。
         self.enemy_controller = EnemyController(
             grid=self.grid,
             units=self.units,
             turn_manager=self.turn_manager,
             enemy_team_id=ENEMY_TEAM_ID,
         )
-
-        # 中文注释：高亮系统负责移动范围/路径预览/攻击范围的 tile 计算。
         self.highlight_system = HighlightSystem(
             grid=self.grid,
             selected_unit_provider=self.get_selected_unit,
@@ -143,8 +142,6 @@ class Game:
             tile_size=self.tile_size,
             player_camp=PLAYER,
         )
-
-        # 中文注释：UI 系统统一负责面板、HUD、单位信息与行动菜单的绘制。
         self.ui_system = UISystem(
             screen=self.screen,
             ui_panel_rect=self.bottom_panel_rect,
@@ -178,9 +175,9 @@ class Game:
             tile.move_cost = preset["move_cost"]
             tile.defense_bonus = preset["defense_bonus"]
 
-    def handle_events(self) -> None:
+    def handle_events(self, events: list[pygame.event.Event] | None = None) -> None:
         """处理输入事件：保存当前帧事件并处理退出事件。"""
-        self.events = pygame.event.get()
+        self.events = pygame.event.get() if events is None else events
         for event in self.events:
             if event.type == pygame.QUIT:
                 self.running = False
@@ -311,4 +308,3 @@ class Game:
         if tile is None:
             return None
         return (grid_x, grid_y)
-

@@ -26,23 +26,70 @@ class SpawnSystem:
         enemy_team_id: int = 2,
     ) -> tuple[list[Unit], list[Unit]]:
         """读取关卡与场景并返回双方单位列表。"""
-        spawns = level_data.get("spawns", {})
-        player_spawns = list(spawns.get("player", []))
-        enemy_spawns = list(spawns.get("enemy", []))
+        # 中文注释：兼容旧数据（player_units+spawns）与新流程（player_roster+deployment_zones）。
+        player_specs = list(scenario_data.get("player_units", scenario_data.get("player_roster", [])))
+        player_spawns = list(level_data.get("spawns", {}).get("player", []))
 
-        player_units = cls._spawn_camp_units(
+        if player_spawns and all("spawn" in spec for spec in player_specs):
+            player_units = cls._spawn_camp_units(
+                grid=grid,
+                unit_specs=player_specs,
+                spawn_points=player_spawns,
+                team_id=player_team_id,
+            )
+        else:
+            deployment_zone = list(level_data.get("deployment_zones", {}).get("player", []))
+            deployment_positions = deployment_zone[: len(player_specs)]
+            player_units = cls.spawn_player_units(
+                grid=grid,
+                roster=player_specs,
+                deployment_positions=deployment_positions,
+                player_team_id=player_team_id,
+            )
+
+        enemy_units = cls.spawn_enemy_units(
             grid=grid,
-            unit_specs=list(scenario_data.get("player_units", [])),
-            spawn_points=player_spawns,
-            team_id=player_team_id,
+            level_data=level_data,
+            scenario_data=scenario_data,
+            enemy_team_id=enemy_team_id,
         )
-        enemy_units = cls._spawn_camp_units(
+        return player_units, enemy_units
+
+    @classmethod
+    def spawn_player_units(
+        cls,
+        grid: object,
+        roster: list[dict[str, object]],
+        deployment_positions: list[tuple[int, int]],
+        player_team_id: int = 1,
+    ) -> list[Unit]:
+        """根据部署结果生成玩家单位。"""
+        if len(roster) != len(deployment_positions):
+            raise ValueError("Deployment positions count must match roster size")
+
+        units: list[Unit] = []
+        for index, roster_entry in enumerate(roster):
+            unit_type = str(roster_entry.get("type", ""))
+            pos = deployment_positions[index]
+            units.append(cls._create_unit_from_template(grid, unit_type, pos, player_team_id))
+        return units
+
+    @classmethod
+    def spawn_enemy_units(
+        cls,
+        grid: object,
+        level_data: dict[str, object],
+        scenario_data: dict[str, object],
+        enemy_team_id: int = 2,
+    ) -> list[Unit]:
+        """仅生成敌方单位，供部署后进入战斗时使用。"""
+        enemy_spawns = list(level_data.get("spawns", {}).get("enemy", []))
+        return cls._spawn_camp_units(
             grid=grid,
             unit_specs=list(scenario_data.get("enemy_units", [])),
             spawn_points=enemy_spawns,
             team_id=enemy_team_id,
         )
-        return player_units, enemy_units
 
     @classmethod
     def _spawn_camp_units(
@@ -62,31 +109,41 @@ class SpawnSystem:
                 raise ValueError(f"Invalid spawn index {spawn_index} for unit type {unit_type}")
 
             spawn_pos = spawn_points[spawn_index]
-            tile = grid.get_tile(spawn_pos[0], spawn_pos[1])
-            if tile is None:
-                raise ValueError(f"Invalid spawn position {spawn_pos} for unit type {unit_type}")
-
-            template = cls.UNIT_TEMPLATES.get(unit_type)
-            if template is None:
-                raise ValueError(f"Unknown unit type: {unit_type}")
-
-            config = UnitConfig(
-                hp=template["hp"],
-                atk=template["atk"],
-                defense=template["defense"],
-                move=template["move"],
-                range_min=template["range_min"],
-                range_max=template["range_max"],
-            )
-            state = UnitState(
-                pos=spawn_pos,
-                hp=config.hp,
-                acted=False,
-                alive=True,
-                team_id=team_id,
-            )
-            unit = Unit(config=config, state=state)
-            setattr(unit, "name", unit_type)
-            units.append(unit)
+            units.append(cls._create_unit_from_template(grid, unit_type, spawn_pos, team_id))
 
         return units
+
+    @classmethod
+    def _create_unit_from_template(
+        cls,
+        grid: object,
+        unit_type: str,
+        pos: tuple[int, int],
+        team_id: int,
+    ) -> Unit:
+        tile = grid.get_tile(pos[0], pos[1])
+        if tile is None:
+            raise ValueError(f"Invalid spawn position {pos} for unit type {unit_type}")
+
+        template = cls.UNIT_TEMPLATES.get(unit_type)
+        if template is None:
+            raise ValueError(f"Unknown unit type: {unit_type}")
+
+        config = UnitConfig(
+            hp=template["hp"],
+            atk=template["atk"],
+            defense=template["defense"],
+            move=template["move"],
+            range_min=template["range_min"],
+            range_max=template["range_max"],
+        )
+        state = UnitState(
+            pos=pos,
+            hp=config.hp,
+            acted=False,
+            alive=True,
+            team_id=team_id,
+        )
+        unit = Unit(config=config, state=state)
+        setattr(unit, "name", unit_type)
+        return unit
