@@ -8,12 +8,15 @@ from game.entity.unit import Unit
 
 TEXT_COLOR = (20, 20, 20)
 FONT_SIZE = 24
-HUD_X = 8
-HUD_Y = 8
 LINE_SPACING = 28
 
 
-def render_hud(screen: pygame.Surface, units: list[Unit], current_turn: str) -> None:
+def render_hud(
+    screen: pygame.Surface,
+    units: list[Unit],
+    current_turn: str,
+    panel_rect: pygame.Rect | None = None,
+) -> None:
     """Render current turn and HP summary text."""
     font = pygame.font.Font(None, FONT_SIZE)
 
@@ -27,9 +30,16 @@ def render_hud(screen: pygame.Surface, units: list[Unit], current_turn: str) -> 
         f"Enemy HP: {enemy_hp}",
     ]
 
+    if panel_rect is None:
+        base_x, base_y = 8, 8
+    else:
+        # 中文注释：将 HUD 固定绘制在底部 UI Panel 的右侧区域。
+        base_x = panel_rect.x + 180
+        base_y = panel_rect.y + 20
+
     for index, text in enumerate(lines):
         surface = font.render(text, True, TEXT_COLOR)
-        screen.blit(surface, (HUD_X, HUD_Y + index * LINE_SPACING))
+        screen.blit(surface, (base_x, base_y + index * LINE_SPACING))
 
 
 def _sum_team_hp(units: list[Unit], team_id: int) -> int:

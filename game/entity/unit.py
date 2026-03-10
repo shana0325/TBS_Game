@@ -16,6 +16,11 @@ class UnitConfig:
     range_min: int
     range_max: int
 
+    @property
+    def attack_range(self) -> tuple[int, int]:
+        # 中文注释：提供统一攻击距离视图，兼容 range_min/range_max 旧字段。
+        return self.range_min, self.range_max
+
 
 @dataclass(slots=True)
 class UnitState:

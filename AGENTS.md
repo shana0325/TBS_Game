@@ -16,6 +16,7 @@ The project is designed as a **clean modular architecture** separating:
 * Rendering
 * AI decision logic
 * Data models
+* App state flow
 
 The current version is a **playable MVP prototype**.
 
@@ -29,6 +30,7 @@ Core features include:
 * Basic enemy AI
 * Pygame rendering
 * HUD display
+* GameState-driven input flow
 
 ---
 
@@ -47,6 +49,9 @@ Game Logic Layer
  ├─ Turn Manager
  └─ Enemy AI
 
+Application State Layer
+ └─ GameState (input/action flow)
+
 Rendering Layer
  ├─ Map Renderer
  └─ HUD
@@ -59,79 +64,17 @@ Important rule:
 
 **Game logic must not depend on pygame.**
 
-Only the rendering and UI layers should import pygame.
+Only the rendering, UI, and application loop should import pygame.
 
 ---
 
 # Directory Structure
 
-```
-game/
-  core/
-  battle/
-    combat/
-    movement/
-    turn/
-  entity/
-  ai/
-  render/
-  ui/
-  data/
-  save/
-
-assets/
-
-docs/
-
-main.py
-```
-
-Responsibilities:
-
-### battle/
-
-Contains gameplay systems.
-
-Examples:
-
-* movement/pathfinder.py -> movement logic
-* combat/damage_calculator.py -> combat math
-* turn/turn_manager.py -> turn control
-
-### entity/
-
-Contains game objects.
-
-Examples:
-
-* Unit
-* Skill
-* Buff
-
-### ai/
-
-Contains enemy decision logic.
-
-Example:
-
-enemy_ai.py -> choose_enemy_action()
-
-### render/
-
-Handles drawing the map and units.
-
-Uses pygame.
-
-### ui/
-
-HUD and interface elements.
-
-Uses pygame.
+Directory structure and module responsibilities have been moved to `ARCHITECTURE.md`.
 
 ---
 
 # Core Systems
-
 ## Grid / Tile
 
 Defines the battlefield map.
@@ -272,6 +215,29 @@ Decision priority:
 
 ---
 
+## GameState System
+
+File:
+
+```
+core/game_state.py
+```
+
+States:
+
+* IDLE
+* UNIT_SELECTED
+* MOVE_MODE
+* ATTACK_MODE
+* ENEMY_TURN
+
+Purpose:
+
+* make input handling explicit by state
+* keep loop flow readable and extensible
+
+---
+
 # Rendering Rules
 
 All pygame rendering must stay inside:
@@ -298,7 +264,7 @@ Game logic modules must remain **pygame-free**.
 Main loop structure:
 
 ```
-handle input
+handle input (state-driven)
 update game logic
 AI decisions
 render map
@@ -348,8 +314,8 @@ Example:
 
 ```
 render_map()
-draw_grid()
-draw_units()
+_draw_grid()
+_draw_units()
 ```
 
 instead of large monolithic functions.
@@ -384,9 +350,10 @@ The project currently includes:
 * combat system
 * turn manager
 * enemy AI
-* CLI validation prototype
+* pygame integration prototype
 * pygame rendering
 * HUD UI
+* GameState-based input flow
 
 This version is considered a **playable MVP prototype**.
 
@@ -406,6 +373,14 @@ Potential next steps:
 
 ---
 
+# Collaboration Preferences
+
+- Prefer responding in Chinese unless the user explicitly requests another language.
+- Prefer adding new feature modules instead of changing existing behavior directly, unless refactor/fix is explicitly requested.
+- Implementing module functionality must include at least Chinese comments describing the module functionality.
+
+---
+
 # Instructions for AI Agents
 
 When implementing new features:
@@ -413,6 +388,9 @@ When implementing new features:
 1. Follow existing architecture
 2. Avoid introducing new dependencies
 3. Keep game logic independent from pygame
-4. Maintain modular structure
+4. Keep input flow controlled by GameState when extending main loop
+5. Maintain modular structure
 
 If unsure, extend existing systems rather than rewriting them.
+
+
