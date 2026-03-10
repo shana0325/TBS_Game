@@ -8,6 +8,7 @@ MENU_BG_COLOR = (250, 250, 250)
 MENU_BORDER_COLOR = (80, 80, 80)
 MENU_TEXT_COLOR = (20, 20, 20)
 MENU_HOVER_COLOR = (225, 235, 255)
+MENU_TITLE_COLOR = (40, 40, 40)
 
 
 class ActionMenu:
@@ -17,8 +18,8 @@ class ActionMenu:
         self,
         x: int = 8,
         y: int = 96,
-        width: int = 140,
-        item_height: int = 34,
+        width: int = 220,
+        item_height: int = 42,
     ) -> None:
         self.x = x
         self.y = y
@@ -27,6 +28,7 @@ class ActionMenu:
         self.options = ["Move", "Attack", "Wait"]
         self.visible = False
         self._font: pygame.font.Font | None = None
+        self._title_font: pygame.font.Font | None = None
 
     def show(self) -> None:
         self.visible = True
@@ -34,13 +36,22 @@ class ActionMenu:
     def hide(self) -> None:
         self.visible = False
 
+    def set_anchor(self, x: int, y: int) -> None:
+        self.x = x
+        self.y = y
+
     def draw(self, screen: pygame.Surface) -> None:
         """Draw action menu when visible."""
         if not self.visible:
             return
 
         if self._font is None:
-            self._font = pygame.font.Font(None, 26)
+            self._font = pygame.font.Font(None, 28)
+        if self._title_font is None:
+            self._title_font = pygame.font.Font(None, 30)
+
+        title_surface = self._title_font.render("Actions", True, MENU_TITLE_COLOR)
+        screen.blit(title_surface, (self.x, self.y - 34))
 
         mouse_pos = pygame.mouse.get_pos()
         for index, label in enumerate(self.options):

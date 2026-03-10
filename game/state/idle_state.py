@@ -20,20 +20,22 @@ class IdleState(GameStateBase):
         from game.state.attack_state import AttackState
         from game.state.move_state import MoveState
 
-        if game.player.state.acted or not game.player.state.alive:
-            game.game_state = GameState.IDLE
-            return self
-
         if game.game_state == GameState.IDLE:
             for event in events:
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    if not battlefield_rect.collidepoint(event.pos):
-                        continue
-                    target_x = event.pos[0] // game.tile_size
-                    target_y = event.pos[1] // game.tile_size
-                    if (target_x, target_y) == game.player.state.pos:
-                        game.game_state = GameState.UNIT_SELECTED
-                        return self
+                if event.type != pygame.MOUSEBUTTONDOWN or event.button != 1:
+                    continue
+
+                target = game.screen_to_grid(event.pos)
+                if target is None:
+                    continue
+
+                # 中文注释：Idle 下允许选中任意存活单位，用于 Unit Info 查看。
+                viewable = game.get_viewable_unit_at(target)
+                if viewable is not None:
+                    game.selected_unit = viewable
+                    game.game_state = GameState.UNIT_SELECTED
+                    return self
+
             return self
 
         if game.game_state == GameState.UNIT_SELECTED:
@@ -41,16 +43,28 @@ class IdleState(GameStateBase):
                 if event.type != pygame.MOUSEBUTTONDOWN or event.button != 1:
                     continue
 
-                option = game.action_menu.get_option_at_pos(event.pos)
-                if option == "Move":
-                    game.game_state = GameState.MOVE_MODE
-                    return MoveState()
-                if option == "Attack":
-                    game.game_state = GameState.ATTACK_MODE
-                    return AttackState()
-                if option == "Wait":
-                    game.turn_manager.mark_acted(game.player)
-                    game.game_state = GameState.IDLE
-                    return self
+                # 中文注释：只有可操作单位（玩家且未行动）才响应行动菜单点击。
+                if game.can_command_selected_unit():
+                    option = game.action_menu.get_option_at_pos(event.pos)
+                    if option == "Move":
+                        game.game_state = GameState.MOVE_MODE
+                        return MoveState()
+                    if option == "Attack":
+                        game.game_state = GameState.ATTACK_MODE
+                        return AttackState()
+                    if option == "Wait":
+                        if game.selected_unit is not None:
+                            game.turn_manager.mark_acted(game.selected_unit)
+                        game.selected_unit = None
+                        game.game_state = GameState.IDLE
+                        return self
+
+                # 中文注释：菜单外点击战场时，可切换查看任意存活单位。
+                target = game.screen_to_grid(event.pos)
+                if target is not None:
+                    viewable = game.get_viewable_unit_at(target)
+                    if viewable is not None:
+                        game.selected_unit = viewable
+                        return self
 
         return self

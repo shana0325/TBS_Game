@@ -11,13 +11,19 @@ PATH_WIDTH = 3
 NODE_RADIUS = 5
 
 
-def draw_path_preview(screen: pygame.Surface, path: list[Tile], tile_size: int) -> None:
+def draw_path_preview(
+    screen: pygame.Surface,
+    path: list[Tile],
+    tile_size: int,
+    origin: tuple[int, int] = (0, 0),
+) -> None:
     """绘制路径预览：使用线段连接路径节点，并在节点绘制圆点。"""
     if not path:
         return
 
+    ox, oy = origin
     centers = [
-        (tile.x * tile_size + tile_size // 2, tile.y * tile_size + tile_size // 2)
+        (ox + tile.x * tile_size + tile_size // 2, oy + tile.y * tile_size + tile_size // 2)
         for tile in path
     ]
 

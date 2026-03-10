@@ -96,3 +96,11 @@
 ## Stage 24 - UI System Refactor
 - Added `game/ui/ui_system.py` to centralize UI Panel, HUD, and ActionMenu rendering.
 - `Game.render()` now delegates UI drawing to `UISystem.render(...)` without behavior changes.
+
+## Stage 25 - Dual Battlefield UI Layout
+- Redesigned layout into three regions: Battlefield Area (top), Unit Info Panel (bottom-left), and Action Panel (bottom-right).
+- Added centered battlefield rendering with left/right grid borders, visible gap area, and non-overlapping bottom UI system.
+
+## Stage 26 - Multi-Unit Support
+- Expanded game initialization to spawn multiple player and enemy units, and unified unit list management.
+- Updated state-driven selection/action flow to target selectable unacted player units; enemy controller now executes all enemy units sequentially per enemy turn.

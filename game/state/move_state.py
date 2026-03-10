@@ -20,37 +20,42 @@ class MoveState(GameStateBase):
     ) -> GameStateBase:
         from game.state.idle_state import IdleState
 
-        if game.player.state.acted or not game.player.state.alive:
+        actor = game.selected_unit
+        if actor is None or actor.state.acted or not actor.state.alive:
+            game.selected_unit = None
             game.game_state = GameState.IDLE
             return IdleState()
 
         for event in events:
             if event.type != pygame.MOUSEBUTTONDOWN or event.button != 1:
                 continue
-            if not battlefield_rect.collidepoint(event.pos):
+
+            target = game.screen_to_grid(event.pos)
+            if target is None:
                 continue
 
-            target_x = event.pos[0] // game.tile_size
-            target_y = event.pos[1] // game.tile_size
+            target_x, target_y = target
 
-            start_tile = game.grid.get_tile(*game.player.state.pos)
+            start_tile = game.grid.get_tile(*actor.state.pos)
             target_tile = game.grid.get_tile(target_x, target_y)
             if start_tile is None or target_tile is None:
                 return self
 
-            # 中文注释：玩家移动只能落在 Player Grid 内。
+            # 中文注释：玩家移动只能落在 Player Grid 内，且不能占据已有单位位置。
             if game.grid.get_side_for_position(target_x, target_y) != "player":
                 return self
-            if (target_x, target_y) == game.enemy.state.pos:
+            occupant = game.get_unit_at(target)
+            if occupant is not None and occupant is not actor:
                 return self
 
-            reachable = get_reachable_tiles(game.grid, start_tile, game.player.config.move)
+            reachable = get_reachable_tiles(game.grid, start_tile, actor.config.move)
             reachable_positions = {(tile.x, tile.y) for tile in reachable}
             if (target_x, target_y) not in reachable_positions:
                 return self
 
-            game.player.move_to(target_x, target_y)
-            game.turn_manager.mark_acted(game.player)
+            actor.move_to(target_x, target_y)
+            game.turn_manager.mark_acted(actor)
+            game.selected_unit = None
             game.game_state = GameState.IDLE
             return IdleState()
 
