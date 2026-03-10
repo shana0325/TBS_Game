@@ -8,7 +8,7 @@ This file contains the project directory structure and module responsibilities.
 
 ```text
 TBS_Game/
-  main.py                        # 程序入口（初始化 pygame + 驱动 Game 循环）
+  main.py                        # 程序入口（初始化 pygame + 驱动 ScreenManager 循环）
   AGENTS.md                      # AI 代理协作规范
   ARCHITECTURE.md                # 架构与目录说明（本文件）
   README.md                      # 项目说明
@@ -25,11 +25,30 @@ TBS_Game/
 
   game/
     core/
-      game.py                    # 游戏主控制器（主流程调度）
-      game_state.py              # 保留的状态枚举（IDLE/MOVE/ATTACK 等）
+      game.py                    # 战斗运行时控制器（输入/更新/渲染）
+      game_state.py              # 保留状态枚举（IDLE/UNIT_SELECTED/MOVE/ATTACK/ENEMY_TURN）
       game_app.py                # 预留：应用容器骨架
       scene_manager.py           # 预留：场景切换骨架
       input_handler.py           # 预留：输入分发骨架
+
+    screens/
+      screen_base.py             # Screen 抽象基类（handle_input/update/render）
+      screen_manager.py          # Screen 切换与主循环转发
+      main_menu_screen.py        # 主菜单
+      level_select_screen.py     # 关卡/场景选择
+      deployment_screen.py       # 战前部署（部署区高亮/放置/开战）
+      battle_screen.py           # 战斗入口（加载 level/scenario，调用 SpawnSystem，创建 Game）
+      result_screen.py           # 结算界面
+
+    levels/
+      level/
+        level_1.py               # 关卡数据（map/terrain/deployment_zones/spawns）
+        level_loader.py          # 关卡加载器
+      scenario/
+        scenario_1.py            # 场景配置（level/player_roster/enemy_units/victory_condition）
+        scenario_loader.py       # 场景加载器
+      systems/
+        spawn_system.py          # 单位生成系统（player/enemy 分离生成）
 
     state/
       game_state_base.py         # State Pattern 基类
@@ -39,7 +58,7 @@ TBS_Game/
 
     controllers/
       enemy_controller.py        # 敌方回合控制（AI 决策 + 行动）
-      player_controller.py       # 预留：历史控制器实现（当前主流程使用 state/*）
+      player_controller.py       # 历史控制器（当前主流程主要使用 state/*）
 
     battle/
       battle_system.py           # 预留：战斗系统总入口骨架
@@ -75,9 +94,10 @@ TBS_Game/
       effect_renderer.py         # 预留：特效渲染骨架
 
     ui/
-      ui_system.py               # UI 面板总渲染（Panel + HUD + ActionMenu）
-      hud.py                     # HUD（回合与 HP）
+      ui_system.py               # UI 面板总渲染（Panel + UnitInfo + ActionMenu）
+      hud.py                     # HUD 兼容接口（当前主要信息由 Unit Info Panel 提供）
       action_menu.py             # 行动菜单（Move/Attack/Wait）
+      unit_info_panel.py         # 选中单位信息面板
       menu.py                    # 预留：菜单骨架
       battle_log.py              # 预留：战斗日志骨架
 
@@ -90,8 +110,8 @@ TBS_Game/
 ```
 
 Notes:
-- Runtime orchestration is centered in `game/core/game.py`.
-- Player turn input is currently driven by State Pattern (`game/state/*`).
-- Combat responsibilities are split: `damage_calculator.py` (damage only), `combat_system.py` (range checks), `highlight_system.py` (highlight tile computation).
-- UI responsibilities are split: gameplay renderers in `game/render/*`, panel/HUD/menu composition in `game/ui/ui_system.py`.
-- Logic modules should stay pygame-free where possible; rendering/UI/main are the primary pygame users.
+- 非战斗界面流程由 `game/screens/*` 管理；战斗运行时由 `game/core/game.py` 负责。
+- 战斗准备阶段职责分离：`Level`（地图数据）/`Scenario`（编成与规则）/`SpawnSystem`（实体生成）。
+- 部署阶段在 `deployment_screen.py`：只处理部署交互与结果传递，不改 battle 核心系统。
+- Combat 职责拆分：`damage_calculator.py`（伤害计算），`combat_system.py`（距离判定），`highlight_system.py`（高亮计算）。
+- 约束：逻辑模块保持 pygame-free；pygame 主要出现在 `screens`、`render`、`ui`、`main.py`。
