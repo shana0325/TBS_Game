@@ -1,4 +1,4 @@
-﻿"""战斗判定模块：负责攻击距离与攻击范围判断。"""
+﻿"""战斗判定模块：负责攻击距离与攻击范围判断，以及战斗事件分发。"""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from game.entity.unit import Unit
 
 
 class CombatSystem:
-    """Centralized combat range checks for battle interactions."""
+    """Centralized combat range checks and event dispatch for battle interactions."""
 
     def __init__(self, grid: object) -> None:
         self.grid = grid
@@ -28,6 +28,22 @@ class CombatSystem:
         tx, ty = target_pos
         distance = abs(ax - tx) + abs(ay - ty)
         return attacker.config.range_min <= distance <= attacker.config.range_max
+
+    def dispatch_event(self, event_type: str, context: dict[str, object]) -> None:
+        """Dispatch combat events to all buff listeners."""
+        game = context.get("game")
+        if game is None:
+            attacker = context.get("attacker")
+            game = getattr(attacker, "battle_context", None)
+        if game is None:
+            return
+
+        units = getattr(game, "units", [])
+        for unit in units:
+            if not isinstance(unit, Unit):
+                continue
+            for buff in list(unit.buffs):
+                buff.on_event(event_type, owner=unit, context=context, game=game)
 
     def _cross_grid_distance(self, attacker_x: int, target_x: int) -> int:
         # 中文注释：将两侧战场压缩为逻辑列（0..7）后计算列差。

@@ -90,6 +90,13 @@ class Game:
         # 中文注释：战斗日志由 Game 持有，供状态机、控制器和 UI 统一读写。
         self.battle_log = BattleLog()
 
+        # 中文注释：为单位挂载日志引用，供护盾/持续效果等逻辑层输出日志。
+        for unit in self.units:
+            unit.set_battle_log(self.battle_log)
+            unit.set_battle_context(self)
+
+        self.turn_manager.set_game_context(self)
+
         self.tile_size = TILE_SIZE
         self.map_pixel_width = self.grid.width * self.tile_size
         self.map_pixel_height = self.grid.height * self.tile_size
@@ -375,6 +382,8 @@ class Game:
             return False
         if self.selected_unit.state.team_id != PLAYER_TEAM_ID:
             return False
+        if self.selected_unit.is_stunned():
+            return False
         return not self.selected_unit.state.acted
 
     def get_viewable_unit_at(self, grid_pos: tuple[int, int]) -> Unit | None:
@@ -394,6 +403,8 @@ class Game:
         if unit.state.team_id != PLAYER_TEAM_ID:
             return None
         if unit.state.acted or not unit.state.alive:
+            return None
+        if unit.is_stunned():
             return None
         return unit
 
@@ -415,3 +426,7 @@ class Game:
         if tile is None:
             return None
         return (grid_x, grid_y)
+
+
+
+

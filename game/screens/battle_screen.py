@@ -9,6 +9,7 @@ from game.core.game import ENEMY_TEAM_ID, PLAYER_TEAM_ID, Game
 from game.levels.level.level_loader import load_level
 from game.levels.scenario.scenario_loader import load_scenario
 from game.levels.systems.spawn_system import SpawnSystem
+from game.player.player_army import PlayerArmy
 from game.screens.screen_base import ScreenBase
 
 # 中文注释：与 Game 中地形默认值保持一致，确保外部构建战场时行为一致。
@@ -40,7 +41,8 @@ class BattleScreen(ScreenBase):
         grid = self._create_grid_from_level(level_data)
         self._apply_level_terrain(grid, level_data)
 
-        roster = list(scenario_data.get("player_roster", []))
+        # 中文注释：玩家出战名单统一来自全局 PlayerArmy。
+        roster = PlayerArmy().get_deployable_units()
         if deployed_player_positions is None:
             deployment_positions = list(level_data.get("deployment_zones", {}).get("player", []))[: len(roster)]
         else:
@@ -139,6 +141,8 @@ class BattleScreen(ScreenBase):
         if enemy_alive and not player_alive:
             return "Defeat"
         return "Battle Ended"
+
+
 
 
 

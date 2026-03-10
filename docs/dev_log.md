@@ -116,3 +116,8 @@
 ## Stage 29 - Deployment Phase
 - Added `DeploymentScreen` between LevelSelect and Battle, with deployment-zone highlight and roster-based unit placement.
 - Updated level/scenario/spawn flow: level now defines `deployment_zones`, scenario uses `player_roster`, and `SpawnSystem` now supports `spawn_player_units(...)` for deployment results.
+
+## Stage 30 - PlayerArmy Global Roster
+- Added global player roster data at `data/player/player_roster.json` to support persistent unit metadata (id/level/exp/equipment/extra_skills).
+- Added `game/player/player_army.py` and switched `DeploymentScreen` / `BattleScreen` to read deployable player units from `PlayerArmy`.
+- Simplified `Scenario` responsibility to `level + enemy_units + victory_condition` (no per-scenario `player_roster`).

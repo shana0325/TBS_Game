@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from game.battle.combat.damage_calculator import calculate_damage
+from game.battle.effects.effect_system import EffectSystem
 
 if TYPE_CHECKING:
     from game.entity.unit import Unit
@@ -13,16 +13,22 @@ if TYPE_CHECKING:
 
 @dataclass(slots=True)
 class Skill:
-    """最小技能模型。"""
+    """技能模型：通过 effects 驱动具体效果执行。"""
 
     name: str
     power: float
     min_range: int
     max_range: int
+    effects: list[dict[str, object]] = field(default_factory=list)
 
     def execute(self, user: Unit, target: Unit) -> int:
-        """执行技能：计算伤害、扣血并返回伤害值。"""
-        # 中文注释：当前最小版本仅处理伤害技能，不包含治疗/异常状态。
-        damage = calculate_damage(user, target, terrain_bonus=0, skill_power=self.power)
-        target.take_damage(damage)
-        return damage
+        """执行技能：遍历效果列表并交给 EffectSystem 处理。"""
+        # 中文注释：兼容旧技能数据（仅 power，无 effects）时自动转为 damage 效果。
+        effect_list = self.effects
+        if not effect_list:
+            effect_list = [{"type": "damage", "power": self.power}]
+
+        total_value = 0
+        for effect_data in effect_list:
+            total_value += EffectSystem.apply(effect_data, user, target)
+        return total_value

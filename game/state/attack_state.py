@@ -53,7 +53,11 @@ class AttackState(GameStateBase):
 
             if game.combat_system.is_in_attack_range(actor, target_unit):
                 damage = calculate_damage(actor, target_unit, terrain_bonus=0)
-                target_unit.take_damage(damage)
+                game.combat_system.dispatch_event(
+                    "on_attack",
+                    {"attacker": actor, "target": target_unit, "damage": damage, "game": game},
+                )
+                target_unit.take_damage(damage, attacker=actor)
 
                 # 中文注释：记录玩家攻击事件与可能的击杀结果。
                 attacker_name = getattr(actor, "name", "Unit")

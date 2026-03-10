@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from game.data.config_loader import ConfigLoader
+from game.data.game_database import GameDatabase
 from game.entity.skill import Skill
 from game.entity.unit import Unit, UnitConfig, UnitState
 
@@ -9,13 +11,9 @@ from game.entity.unit import Unit, UnitConfig, UnitState
 class SpawnSystem:
     """根据 Scenario 单位配置与 Level 出生点生成实体。"""
 
-    # 中文注释：单位模板集中在生成系统中，后续可替换为配置表加载。
-    UNIT_TEMPLATES: dict[str, dict[str, int]] = {
-        "Hero": {"hp": 22, "atk": 7, "defense": 5, "move": 4, "range_min": 1, "range_max": 2},
-        "Knight": {"hp": 20, "atk": 6, "defense": 4, "move": 4, "range_min": 1, "range_max": 1},
-        "Goblin": {"hp": 14, "atk": 4, "defense": 1, "move": 4, "range_min": 1, "range_max": 1},
-        "Orc": {"hp": 18, "atk": 5, "defense": 2, "move": 3, "range_min": 1, "range_max": 1},
-    }
+    # 中文注释：先加载配置，再由 GameDatabase 提供统一访问接口。
+    _config_loader = ConfigLoader()
+    _game_db = GameDatabase(_config_loader)
 
     @classmethod
     def spawn_units(
@@ -72,7 +70,16 @@ class SpawnSystem:
         for index, roster_entry in enumerate(roster):
             unit_type = str(roster_entry.get("type", ""))
             pos = deployment_positions[index]
-            units.append(cls._create_unit_from_template(grid, unit_type, pos, player_team_id))
+            extra_skills = cls._normalize_skill_ids(roster_entry.get("extra_skills", []))
+            units.append(
+                cls._create_unit_from_template(
+                    grid=grid,
+                    unit_type=unit_type,
+                    pos=pos,
+                    team_id=player_team_id,
+                    extra_skill_ids=extra_skills,
+                )
+            )
         return units
 
     @classmethod
@@ -93,6 +100,24 @@ class SpawnSystem:
         )
 
     @classmethod
+    def spawn_unit_at(
+        cls,
+        grid: object,
+        unit_type: str,
+        pos: tuple[int, int],
+        team_id: int,
+        extra_skill_ids: list[str] | None = None,
+    ) -> Unit:
+        """在指定位置生成单个单位，供召唤等系统调用。"""
+        return cls._create_unit_from_template(
+            grid=grid,
+            unit_type=unit_type,
+            pos=pos,
+            team_id=team_id,
+            extra_skill_ids=extra_skill_ids,
+        )
+
+    @classmethod
     def _spawn_camp_units(
         cls,
         grid: object,
@@ -110,7 +135,16 @@ class SpawnSystem:
                 raise ValueError(f"Invalid spawn index {spawn_index} for unit type {unit_type}")
 
             spawn_pos = spawn_points[spawn_index]
-            units.append(cls._create_unit_from_template(grid, unit_type, spawn_pos, team_id))
+            extra_skills = cls._normalize_skill_ids(spec.get("extra_skills", []))
+            units.append(
+                cls._create_unit_from_template(
+                    grid=grid,
+                    unit_type=unit_type,
+                    pos=spawn_pos,
+                    team_id=team_id,
+                    extra_skill_ids=extra_skills,
+                )
+            )
 
         return units
 
@@ -121,22 +155,23 @@ class SpawnSystem:
         unit_type: str,
         pos: tuple[int, int],
         team_id: int,
+        extra_skill_ids: list[str] | None = None,
     ) -> Unit:
         tile = grid.get_tile(pos[0], pos[1])
         if tile is None:
             raise ValueError(f"Invalid spawn position {pos} for unit type {unit_type}")
 
-        template = cls.UNIT_TEMPLATES.get(unit_type)
+        template = cls._game_db.get_unit(unit_type)
         if template is None:
             raise ValueError(f"Unknown unit type: {unit_type}")
 
         config = UnitConfig(
-            hp=template["hp"],
-            atk=template["atk"],
-            defense=template["defense"],
-            move=template["move"],
-            range_min=template["range_min"],
-            range_max=template["range_max"],
+            hp=int(template["hp"]),
+            atk=int(template["atk"]),
+            defense=int(template["defense"]),
+            move=int(template["move"]),
+            range_min=int(template["range_min"]),
+            range_max=int(template["range_max"]),
         )
         state = UnitState(
             pos=pos,
@@ -145,21 +180,64 @@ class SpawnSystem:
             alive=True,
             team_id=team_id,
         )
-        skills = cls._default_skills_for_unit(unit_type)
+        skills = cls._build_skills_for_unit(template, extra_skill_ids)
         unit = Unit(config=config, state=state, skills=skills)
         setattr(unit, "name", unit_type)
         return unit
 
     @classmethod
-    def _default_skills_for_unit(cls, unit_type: str) -> list[Skill]:
-        # 中文注释：最小版本只给 Knight 配置 Power Strike。
-        if unit_type == "Knight":
-            return [
+    def _build_skills_for_unit(
+        cls,
+        unit_template: dict[str, object],
+        extra_skill_ids: list[str] | None = None,
+    ) -> list[Skill]:
+        # 中文注释：单位技能来源 = 模板技能 + 额外技能，按顺序合并并去重。
+        result: list[Skill] = []
+
+        template_skill_ids = cls._normalize_skill_ids(unit_template.get("skills", []))
+        merged_skill_ids: list[str] = []
+        for skill_id in template_skill_ids + (extra_skill_ids or []):
+            if skill_id not in merged_skill_ids:
+                merged_skill_ids.append(skill_id)
+
+        for skill_name in merged_skill_ids:
+            skill_data = cls._game_db.get_skill(skill_name)
+            if skill_data is None:
+                raise ValueError(f"Unknown skill id in unit config: {skill_name}")
+
+            raw_effects = skill_data.get("effects", [])
+            effects: list[dict[str, object]] = []
+            if isinstance(raw_effects, list):
+                for raw_effect in raw_effects:
+                    if isinstance(raw_effect, dict):
+                        effects.append(dict(raw_effect))
+
+            # 中文注释：兼容旧格式（仅 power），自动映射为 damage 效果。
+            power_value = float(skill_data.get("power", 1.0))
+            if not effects:
+                effects = [{"type": "damage", "power": power_value}]
+
+            result.append(
                 Skill(
-                    name="Power Strike",
-                    power=1.5,
-                    min_range=1,
-                    max_range=1,
+                    name=str(skill_data.get("name", skill_name)),
+                    power=power_value,
+                    min_range=int(skill_data.get("min_range", 1)),
+                    max_range=int(skill_data.get("max_range", 1)),
+                    effects=effects,
                 )
-            ]
-        return []
+            )
+
+        return result
+
+    @staticmethod
+    def _normalize_skill_ids(raw_skill_ids: object) -> list[str]:
+        # 中文注释：将配置中的技能列表标准化为字符串数组。
+        if not isinstance(raw_skill_ids, list):
+            return []
+
+        result: list[str] = []
+        for skill_id in raw_skill_ids:
+            skill_name = str(skill_id).strip()
+            if skill_name:
+                result.append(skill_name)
+        return result

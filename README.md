@@ -17,6 +17,16 @@ TBS_Game/
     units/
     skills/
 
+  data/
+    unit/
+      units.json
+    skill/
+      skills.json
+    buff/
+      buffs.json
+    player/
+      player_roster.json
+
   docs/
     tbs_game_system_design_v2.md
     dev_log.md
@@ -81,6 +91,9 @@ TBS_Game/
     ai/
       enemy_ai.py
 
+    player/
+      player_army.py
+
     render/
       map_renderer.py
       highlight_renderer.py
@@ -101,6 +114,7 @@ TBS_Game/
 
     data/
       config_loader.py
+      game_database.py
       schema_validator.py
 
     save/
@@ -110,7 +124,8 @@ TBS_Game/
 ## Current Development Status
 
 - Screen System: `ScreenManager` + `MainMenu / LevelSelect / Deployment / Battle / Result` 已接入。
-- Level/Scenario/Spawn: `Level`（地图数据）/`Scenario`（战斗配置）/`SpawnSystem`（实体生成）职责分离。
+- Level/Scenario/Spawn: `Level`（地图数据）/`Scenario`（敌方配置与规则）/`SpawnSystem`（实体生成）职责分离。
+- PlayerArmy: 玩家可部署单位来源已从 `Scenario` 分离，统一由 `data/player/player_roster.json` + `PlayerArmy` 提供。
 - Deployment Phase: 战前部署可选择 roster 单位并放置到部署区，再进入战斗。
 - Dual Battlefield: 双战场 + 中间 gap 规则已实现，跨战场攻击可判定。
 - Unit/Turn/AI: 多单位回合、已行动状态、敌方逐单位行动已实现。
@@ -133,7 +148,7 @@ TBS_Game/
 ## Gameplay (Current Prototype)
 
 - 主流程：`Main Menu -> Level Select -> Deployment -> Battle -> Result`。
-- 部署阶段：选择单位并放置到玩家部署区，完成后开始战斗。
+- 部署阶段：从全局玩家编成中读取单位并放置到玩家部署区，完成后开始战斗。
 - 战斗阶段：
   - 选择单位后可执行 `Move / Attack / Skill / Wait`
   - `Skill` 可选择技能后点目标释放
@@ -148,6 +163,7 @@ TBS_Game/
 - 战斗日志增强：分页/滚动、筛选、历史回放。
 - 地图与场景扩展：多关卡、多胜利条件、脚本事件。
 - 更高级 AI：仇恨、站位、集火和风险评估。
+- 玩家编成扩展：背包/装备加成、编队上限、出战过滤规则。
 
 ## Notes
 

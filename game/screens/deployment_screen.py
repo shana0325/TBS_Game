@@ -9,6 +9,7 @@ from game.core.game import BOTTOM_UI_RATIO, ENEMY_TEAM_ID, PLAYER_TEAM_ID
 from game.levels.level.level_loader import load_level
 from game.levels.scenario.scenario_loader import load_scenario
 from game.levels.systems.spawn_system import SpawnSystem
+from game.player.player_army import PlayerArmy
 from game.render.map_renderer import TILE_SIZE, render_map
 from game.screens.screen_base import ScreenBase
 
@@ -40,7 +41,8 @@ class DeploymentScreen(ScreenBase):
         self.grid = self._create_grid_from_level(self.level_data)
         self._apply_level_terrain(self.grid, self.level_data)
 
-        self.roster = list(self.scenario_data.get("player_roster", []))
+        # 中文注释：玩家部署名单来自全局 PlayerArmy，而不是 Scenario。
+        self.roster = PlayerArmy().get_deployable_units()
         self.deployment_zone = list(self.level_data.get("deployment_zones", {}).get("player", []))
 
         if len(self.deployment_zone) < len(self.roster):
@@ -309,3 +311,5 @@ class DeploymentScreen(ScreenBase):
         if tile is None:
             return None
         return (grid_x, grid_y)
+
+

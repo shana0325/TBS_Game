@@ -1,0 +1,20 @@
+﻿{
+  "units": [
+    {
+      "id": "hero_001",
+      "type": "Hero",
+      "level": 1,
+      "exp": 0,
+      "equipment": [],
+      "extra_skills": ["Poison Strike","Guard Shield"]
+    },
+    {
+      "id": "knight_001",
+      "type": "Knight",
+      "level": 1,
+      "exp": 0,
+      "equipment": [],
+      "extra_skills": []
+    }
+  ]
+}

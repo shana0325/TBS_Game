@@ -19,6 +19,16 @@ TBS_Game/
     units/                       # 单位资源占位
     skills/                      # 技能资源占位
 
+  data/
+    unit/
+      units.json                 # 单位模板配置
+    skill/
+      skills.json                # 技能模板配置
+    buff/
+      buffs.json                 # Buff 模板配置
+    player/
+      player_roster.json         # 玩家全局编成（id/type/level/exp/equipment/...）
+
   docs/
     tbs_game_system_design_v2.md # 系统设计文档
     dev_log.md                   # 开发阶段日志
@@ -36,7 +46,7 @@ TBS_Game/
       screen_manager.py          # Screen 切换与主循环转发
       main_menu_screen.py        # 主菜单（支持窗口缩放事件）
       level_select_screen.py     # 关卡/场景选择（支持窗口缩放事件）
-      deployment_screen.py       # 战前部署（支持窗口实时重排）
+      deployment_screen.py       # 战前部署（从 PlayerArmy 读取可部署单位，支持窗口实时重排）
       battle_screen.py           # 战斗入口（加载 level/scenario，调用 SpawnSystem，创建 Game）
       result_screen.py           # 结算界面（支持窗口缩放事件）
 
@@ -45,10 +55,10 @@ TBS_Game/
         level_1.py               # 关卡数据（map/terrain/deployment_zones/spawns）
         level_loader.py          # 关卡加载器
       scenario/
-        scenario_1.py            # 场景配置（level/player_roster/enemy_units/victory_condition）
+        scenario_1.py            # 场景配置（level/enemy_units/victory_condition）
         scenario_loader.py       # 场景加载器
       systems/
-        spawn_system.py          # 单位生成系统（含默认技能注入）
+        spawn_system.py          # 单位生成系统（按模板创建玩家/敌方单位）
 
     state/
       game_state_base.py         # State Pattern 基类
@@ -86,6 +96,9 @@ TBS_Game/
     ai/
       enemy_ai.py                # 敌方决策（attack/move/wait）
 
+    player/
+      player_army.py             # 玩家全局编成读取与部署名单提供
+
     render/
       map_renderer.py            # 地图与单位渲染
       highlight_renderer.py      # 移动范围高亮渲染
@@ -105,7 +118,8 @@ TBS_Game/
       menu.py                    # 预留：菜单骨架
 
     data/
-      config_loader.py           # 预留：配置加载骨架
+      config_loader.py           # JSON 配置加载（units/skills/buffs）
+      game_database.py           # 配置统一访问接口（get_unit/get_skill/get_buff）
       schema_validator.py        # 预留：配置校验骨架
 
     save/
@@ -114,7 +128,7 @@ TBS_Game/
 
 Notes:
 - 非战斗界面流程由 `game/screens/*` 管理；战斗运行时由 `game/core/game.py` 负责。
-- 战斗准备阶段职责分离：`Level`（地图数据）/`Scenario`（编成与规则）/`SpawnSystem`（实体生成）。
+- 战斗准备阶段职责分离：`Level`（地图数据）/`Scenario`（敌方与规则）/`SpawnSystem`（实体生成）/`PlayerArmy`（玩家全局编成）。
 - 战斗交互由 State Pattern 管理：`Idle/Move/Attack/Skill`，并支持模式取消。
 - Combat 职责拆分：`damage_calculator.py`（伤害计算）、`combat_system.py`（距离判定）、`highlight_system.py`（高亮计算）。
 - UI 布局固定语义为 `11114 / 11114 / 22334`，通过比例计算实现自适应，并支持运行中窗口拖拽实时重排。

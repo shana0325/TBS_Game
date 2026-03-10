@@ -41,7 +41,15 @@ class EnemyController:
         action, target = choose_enemy_action(actor, self.grid, self.units)
         if action == "attack" and isinstance(target, Unit):
             damage = calculate_damage(actor, target, terrain_bonus=0)
-            target.take_damage(damage)
+
+            game = actor.battle_context
+            if game is not None and getattr(game, "combat_system", None) is not None:
+                game.combat_system.dispatch_event(
+                    "on_attack",
+                    {"attacker": actor, "target": target, "damage": damage, "game": game},
+                )
+
+            target.take_damage(damage, attacker=actor)
 
             defender_name = getattr(target, "name", "Unit")
             self._log(

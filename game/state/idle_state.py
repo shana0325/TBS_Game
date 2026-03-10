@@ -54,7 +54,8 @@ class IdleState(GameStateBase):
                         game.game_state = GameState.ATTACK_MODE
                         return AttackState()
                     if option == "Skill":
-                        if game.selected_unit is not None and game.selected_unit.skills:
+                        # 中文注释：被沉默单位不可进入技能模式。
+                        if game.selected_unit is not None and game.selected_unit.skills and not game.selected_unit.is_silenced():
                             game.selected_skill = None
                             game.game_state = GameState.SKILL_MODE
                             return SkillState()

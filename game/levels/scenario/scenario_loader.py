@@ -18,7 +18,6 @@ def load_scenario(scenario_name: str) -> dict[str, object]:
         raise ValueError(f"Unknown scenario: {scenario_name}")
     return {
         "level": scenario["level"],
-        "player_roster": list(scenario.get("player_roster", scenario.get("player_units", []))),
         "enemy_units": list(scenario.get("enemy_units", [])),
         "victory_condition": scenario.get("victory_condition", "eliminate_all_enemies"),
     }
