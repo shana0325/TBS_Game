@@ -6,16 +6,19 @@ import pygame
 
 from game.battle.combat.combat_system import CombatSystem
 from game.battle.combat.highlight_system import HighlightSystem
-from game.battle.turn.turn_manager import ENEMY, PLAYER, TurnManager
 from game.battle.movement.grid import DualGrid
+from game.battle.turn.turn_manager import ENEMY, PLAYER, TurnManager
 from game.controllers.enemy_controller import EnemyController
 from game.core.game_state import GameState
-from game.entity.unit import Unit, UnitConfig, UnitState
+from game.entity.unit import Unit
+from game.levels.level.level_loader import load_level
 from game.render.attack_highlight_renderer import draw_attack_highlights
 from game.render.highlight_renderer import draw_move_highlights
 from game.render.map_renderer import TILE_SIZE, render_map
 from game.render.path_renderer import draw_path_preview
+from game.levels.scenario.scenario_loader import load_scenario
 from game.state.idle_state import IdleState
+from game.levels.systems.spawn_system import SpawnSystem
 from game.ui.action_menu import ActionMenu
 from game.ui.ui_system import UISystem
 
@@ -28,13 +31,48 @@ WINDOW_WIDTH = 980
 PLAYER_TEAM_ID = 1
 ENEMY_TEAM_ID = 2
 
+# 中文注释：地形模板仅用于初始化 tile 属性，不耦合具体玩法计算。
+TERRAIN_PRESETS: dict[str, dict[str, int]] = {
+    "plain": {"move_cost": 1, "defense_bonus": 0},
+    "forest": {"move_cost": 2, "defense_bonus": 1},
+}
+
 
 class Game:
     """游戏控制器：封装主循环中的事件、逻辑更新、渲染。"""
 
     def __init__(self) -> None:
-        # 中文注释：战场由左右两个独立 3x4 子网格组成，中间空区不可通行。
-        self.grid = DualGrid(side_width=4, height=3, gap_width=2)
+        # 中文注释：按三层配置流程加载关卡与场景。
+        self.level_data = load_level("level_1")
+        self.scenario_data = load_scenario("scenario_1")
+        scenario_level = str(self.scenario_data.get("level", ""))
+        if scenario_level != "level_1":
+            raise ValueError(f"Scenario level mismatch: expected level_1, got {scenario_level}")
+
+        map_config = self.level_data.get("map", {})
+        side_width = int(map_config.get("side_width", 4))
+        grid_height = int(map_config.get("height", 3))
+        gap_width = int(map_config.get("gap_width", 2))
+
+        # 中文注释：战场由左右两个独立子网格组成，中间空区不可通行。
+        self.grid = DualGrid(side_width=side_width, height=grid_height, gap_width=gap_width)
+        self._apply_level_terrain(self.level_data)
+
+        # 中文注释：通过 SpawnSystem 读取关卡出生点与场景单位配置创建实体。
+        self.player_units, self.enemy_units = SpawnSystem.spawn_units(
+            grid=self.grid,
+            level_data=self.level_data,
+            scenario_data=self.scenario_data,
+            player_team_id=PLAYER_TEAM_ID,
+            enemy_team_id=ENEMY_TEAM_ID,
+        )
+
+        self.units = [*self.player_units, *self.enemy_units]
+        self.turn_manager = TurnManager(
+            units=self.units,
+            player_team_id=PLAYER_TEAM_ID,
+            enemy_team_id=ENEMY_TEAM_ID,
+        )
 
         self.tile_size = TILE_SIZE
         self.map_pixel_width = self.grid.width * self.tile_size
@@ -68,63 +106,6 @@ class Game:
         self.battlefield_origin = (
             self.battlefield_rect.x + (self.battlefield_rect.width - self.map_pixel_width) // 2,
             self.battlefield_rect.y + (self.battlefield_rect.height - self.map_pixel_height) // 2,
-        )
-
-        # 中文注释：初始化双方多个单位。
-        self.player_units = [
-            self._create_unit(
-                name="Knight",
-                team_id=PLAYER_TEAM_ID,
-                pos=(0, 0),
-                hp=20,
-                atk=6,
-                defense=5,
-                move=4,
-                range_min=1,
-                range_max=2,
-            ),
-            self._create_unit(
-                name="Archer",
-                team_id=PLAYER_TEAM_ID,
-                pos=(1, 2),
-                hp=16,
-                atk=5,
-                defense=2,
-                move=4,
-                range_min=2,
-                range_max=4,
-            ),
-        ]
-        self.enemy_units = [
-            self._create_unit(
-                name="Bandit",
-                team_id=ENEMY_TEAM_ID,
-                pos=(self.grid.enemy_offset_x + self.grid.side_width - 1, 0),
-                hp=18,
-                atk=5,
-                defense=1,
-                move=3,
-                range_min=1,
-                range_max=1,
-            ),
-            self._create_unit(
-                name="Hunter",
-                team_id=ENEMY_TEAM_ID,
-                pos=(self.grid.enemy_offset_x + self.grid.side_width - 2, 2),
-                hp=15,
-                atk=4,
-                defense=1,
-                move=3,
-                range_min=2,
-                range_max=3,
-            ),
-        ]
-
-        self.units = [*self.player_units, *self.enemy_units]
-        self.turn_manager = TurnManager(
-            units=self.units,
-            player_team_id=PLAYER_TEAM_ID,
-            enemy_team_id=ENEMY_TEAM_ID,
         )
 
         # 中文注释：保留原有 enum，用于渲染条件与兼容旧逻辑。
@@ -176,30 +157,26 @@ class Game:
         self.running = True
         self.events: list[pygame.event.Event] = []
 
-    def _create_unit(
-        self,
-        name: str,
-        team_id: int,
-        pos: tuple[int, int],
-        hp: int,
-        atk: int,
-        defense: int,
-        move: int,
-        range_min: int,
-        range_max: int,
-    ) -> Unit:
-        config = UnitConfig(
-            hp=hp,
-            atk=atk,
-            defense=defense,
-            move=move,
-            range_min=range_min,
-            range_max=range_max,
-        )
-        state = UnitState(pos=pos, hp=hp, acted=False, alive=True, team_id=team_id)
-        unit = Unit(config, state)
-        setattr(unit, "name", name)
-        return unit
+    def _apply_level_terrain(self, level_data: dict[str, object]) -> None:
+        """将关卡地形数据写入 grid tile。"""
+        # 中文注释：只做初始化赋值，不触发额外战斗逻辑。
+        terrain_list = list(level_data.get("terrain", []))
+        for terrain_item in terrain_list:
+            if not isinstance(terrain_item, dict):
+                continue
+
+            pos = terrain_item.get("pos")
+            terrain_type = str(terrain_item.get("type", "plain"))
+            if not isinstance(pos, tuple) or len(pos) != 2:
+                continue
+
+            tile = self.grid.get_tile(pos[0], pos[1])
+            if tile is None:
+                continue
+
+            preset = TERRAIN_PRESETS.get(terrain_type, TERRAIN_PRESETS["plain"])
+            tile.move_cost = preset["move_cost"]
+            tile.defense_bonus = preset["defense_bonus"]
 
     def handle_events(self) -> None:
         """处理输入事件：保存当前帧事件并处理退出事件。"""
@@ -334,6 +311,4 @@ class Game:
         if tile is None:
             return None
         return (grid_x, grid_y)
-
-
 

@@ -104,3 +104,7 @@
 ## Stage 26 - Multi-Unit Support
 - Expanded game initialization to spawn multiple player and enemy units, and unified unit list management.
 - Updated state-driven selection/action flow to target selectable unacted player units; enemy controller now executes all enemy units sequentially per enemy turn.
+
+## Stage 27 - Level / Scenario / SpawnSystem
+- Added `level` (map/spawn data), `scenario` (battle composition/rules), and `spawn_system` (unit instantiation) modules with clear responsibilities.
+- Updated `Game` initialization to load level/scenario data and spawn units through `SpawnSystem` without changing combat/movement/AI runtime logic.
