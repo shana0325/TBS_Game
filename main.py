@@ -4,19 +4,18 @@ from __future__ import annotations
 
 import pygame
 
-from game.core.game import BOTTOM_PANEL_HEIGHT, BATTLEFIELD_AREA_HEIGHT, WINDOW_WIDTH
+from game.core.game import WINDOW_HEIGHT, WINDOW_WIDTH
 from game.screens.main_menu_screen import MainMenuScreen
 from game.screens.screen_manager import ScreenManager
 
 FPS = 60
-WINDOW_HEIGHT = BATTLEFIELD_AREA_HEIGHT + BOTTOM_PANEL_HEIGHT
 
 
 def main() -> None:
     """启动游戏并运行 Screen 主循环。"""
     pygame.init()
 
-    screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+    screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE)
     pygame.display.set_caption("TBS Game")
 
     clock = pygame.time.Clock()

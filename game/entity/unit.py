@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from game.entity.skill import Skill
+
 
 @dataclass(slots=True)
 class UnitConfig:
@@ -36,9 +38,11 @@ class UnitState:
 class Unit:
     """Composable unit object with config and mutable state."""
 
-    def __init__(self, config: UnitConfig, state: UnitState) -> None:
+    def __init__(self, config: UnitConfig, state: UnitState, skills: list[Skill] | None = None) -> None:
         self.config = config
         self.state = state
+        # 中文注释：skills 保存单位可用技能列表，最小版本不做冷却管理。
+        self.skills: list[Skill] = list(skills) if skills is not None else []
 
     def move_to(self, x: int, y: int) -> None:
         """Update the unit's position."""

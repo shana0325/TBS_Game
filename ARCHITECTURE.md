@@ -8,7 +8,7 @@ This file contains the project directory structure and module responsibilities.
 
 ```text
 TBS_Game/
-  main.py                        # 程序入口（初始化 pygame + 驱动 ScreenManager 循环）
+  main.py                        # 程序入口（可缩放窗口 + ScreenManager 主循环）
   AGENTS.md                      # AI 代理协作规范
   ARCHITECTURE.md                # 架构与目录说明（本文件）
   README.md                      # 项目说明
@@ -25,8 +25,8 @@ TBS_Game/
 
   game/
     core/
-      game.py                    # 战斗运行时控制器（输入/更新/渲染）
-      game_state.py              # 保留状态枚举（IDLE/UNIT_SELECTED/MOVE/ATTACK/ENEMY_TURN）
+      game.py                    # 战斗运行时控制器（输入/更新/渲染 + 自适应布局/实时重排）
+      game_state.py              # 交互状态枚举（含 SKILL_MODE）
       game_app.py                # 预留：应用容器骨架
       scene_manager.py           # 预留：场景切换骨架
       input_handler.py           # 预留：输入分发骨架
@@ -34,11 +34,11 @@ TBS_Game/
     screens/
       screen_base.py             # Screen 抽象基类（handle_input/update/render）
       screen_manager.py          # Screen 切换与主循环转发
-      main_menu_screen.py        # 主菜单
-      level_select_screen.py     # 关卡/场景选择
-      deployment_screen.py       # 战前部署（部署区高亮/放置/开战）
+      main_menu_screen.py        # 主菜单（支持窗口缩放事件）
+      level_select_screen.py     # 关卡/场景选择（支持窗口缩放事件）
+      deployment_screen.py       # 战前部署（支持窗口实时重排）
       battle_screen.py           # 战斗入口（加载 level/scenario，调用 SpawnSystem，创建 Game）
-      result_screen.py           # 结算界面
+      result_screen.py           # 结算界面（支持窗口缩放事件）
 
     levels/
       level/
@@ -48,16 +48,17 @@ TBS_Game/
         scenario_1.py            # 场景配置（level/player_roster/enemy_units/victory_condition）
         scenario_loader.py       # 场景加载器
       systems/
-        spawn_system.py          # 单位生成系统（player/enemy 分离生成）
+        spawn_system.py          # 单位生成系统（含默认技能注入）
 
     state/
       game_state_base.py         # State Pattern 基类
       idle_state.py              # IdleState：选中与菜单输入
-      move_state.py              # MoveState：移动输入与执行
-      attack_state.py            # AttackState：攻击输入与执行
+      move_state.py              # MoveState：移动输入与执行（支持取消）
+      attack_state.py            # AttackState：攻击输入与执行（支持取消）
+      skill_state.py             # SkillState：技能选择与释放流程（支持取消）
 
     controllers/
-      enemy_controller.py        # 敌方回合控制（AI 决策 + 行动）
+      enemy_controller.py        # 敌方回合控制（AI 决策 + 行动 + 日志）
       player_controller.py       # 历史控制器（当前主流程主要使用 state/*）
 
     battle/
@@ -70,7 +71,7 @@ TBS_Game/
         pathfinder.py            # 可达范围与路径预览（Dijkstra）
 
       combat/
-        damage_calculator.py     # 伤害计算（纯计算，不改状态）
+        damage_calculator.py     # 伤害计算（支持 skill_power 倍率）
         combat_system.py         # 攻击距离/范围判定
         highlight_system.py      # 移动/路径/攻击高亮 tile 计算
 
@@ -78,8 +79,8 @@ TBS_Game/
         turn_manager.py          # 回合管理（阵营切换/已行动标记）
 
     entity/
-      unit.py                    # UnitConfig / UnitState / Unit
-      skill.py                   # 预留：技能实体骨架
+      unit.py                    # UnitConfig / UnitState / Unit（含 skills 列表）
+      skill.py                   # Skill 实体（name/power/range + execute）
       buff.py                    # 预留：Buff 实体骨架
 
     ai/
@@ -94,12 +95,14 @@ TBS_Game/
       effect_renderer.py         # 预留：特效渲染骨架
 
     ui/
-      ui_system.py               # UI 面板总渲染（Panel + UnitInfo + ActionMenu）
+      ui_system.py               # UI 面板总渲染（区域2/3/4）
       hud.py                     # HUD 兼容接口（当前主要信息由 Unit Info Panel 提供）
-      action_menu.py             # 行动菜单（Move/Attack/Wait）
+      action_menu.py             # 行动菜单（Move/Attack/Skill/Wait）
+      skill_menu.py              # 技能菜单
       unit_info_panel.py         # 选中单位信息面板
+      battle_log.py              # 战斗日志数据结构
+      battle_log_panel.py        # 战斗日志内容渲染（分色/换行/过滤）
       menu.py                    # 预留：菜单骨架
-      battle_log.py              # 预留：战斗日志骨架
 
     data/
       config_loader.py           # 预留：配置加载骨架
@@ -112,6 +115,8 @@ TBS_Game/
 Notes:
 - 非战斗界面流程由 `game/screens/*` 管理；战斗运行时由 `game/core/game.py` 负责。
 - 战斗准备阶段职责分离：`Level`（地图数据）/`Scenario`（编成与规则）/`SpawnSystem`（实体生成）。
-- 部署阶段在 `deployment_screen.py`：只处理部署交互与结果传递，不改 battle 核心系统。
-- Combat 职责拆分：`damage_calculator.py`（伤害计算），`combat_system.py`（距离判定），`highlight_system.py`（高亮计算）。
+- 战斗交互由 State Pattern 管理：`Idle/Move/Attack/Skill`，并支持模式取消。
+- Combat 职责拆分：`damage_calculator.py`（伤害计算）、`combat_system.py`（距离判定）、`highlight_system.py`（高亮计算）。
+- UI 布局固定语义为 `11114 / 11114 / 22334`，通过比例计算实现自适应，并支持运行中窗口拖拽实时重排。
+- Battle Log 为独立右侧栏（区域4），支持攻击日志分色、长文本换行、移动日志隐藏显示。
 - 约束：逻辑模块保持 pygame-free；pygame 主要出现在 `screens`、`render`、`ui`、`main.py`。

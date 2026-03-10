@@ -10,4 +10,5 @@ class GameState(Enum):
     UNIT_SELECTED = auto()
     MOVE_MODE = auto()
     ATTACK_MODE = auto()
+    SKILL_MODE = auto()
     ENEMY_TURN = auto()

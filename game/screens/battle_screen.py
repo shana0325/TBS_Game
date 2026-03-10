@@ -67,6 +67,7 @@ class BattleScreen(ScreenBase):
             player_units=player_units,
             enemy_units=enemy_units,
         )
+        self.game.battle_log.add("Battle Start", category="system", side="neutral")
 
         # 中文注释：同步 ScreenManager 持有的窗口引用。
         self.manager.screen = self.game.screen
@@ -79,6 +80,7 @@ class BattleScreen(ScreenBase):
                 return
 
         self.game.handle_events(events)
+        self.manager.screen = self.game.screen
 
     def update(self) -> None:
         self.game.update()
@@ -86,9 +88,12 @@ class BattleScreen(ScreenBase):
         if self.game.running:
             return
 
+        result_text = self._resolve_result_text()
+        self.game.battle_log.add(result_text, category="result", side="neutral")
+
         from game.screens.result_screen import ResultScreen
 
-        self.manager.switch_to(ResultScreen(self.manager, self._resolve_result_text()))
+        self.manager.switch_to(ResultScreen(self.manager, result_text))
 
     def render(self) -> None:
         self.game.render()
@@ -134,3 +139,6 @@ class BattleScreen(ScreenBase):
         if enemy_alive and not player_alive:
             return "Defeat"
         return "Battle Ended"
+
+
+

@@ -1,6 +1,6 @@
 ﻿# TBS Game Prototype
 
-This repository contains a Python 2D turn-based strategy (TBS) prototype focused on validating core battle systems and screen flow end-to-end.
+This repository contains a Python 2D turn-based strategy (TBS) prototype focused on validating modular battle systems and screen flow end-to-end.
 
 ## Project Structure
 
@@ -53,6 +53,7 @@ TBS_Game/
       idle_state.py
       move_state.py
       attack_state.py
+      skill_state.py
 
     controllers/
       enemy_controller.py
@@ -92,9 +93,11 @@ TBS_Game/
       ui_system.py
       hud.py
       action_menu.py
+      skill_menu.py
       unit_info_panel.py
-      menu.py
       battle_log.py
+      battle_log_panel.py
+      menu.py
 
     data/
       config_loader.py
@@ -106,34 +109,47 @@ TBS_Game/
 
 ## Current Development Status
 
-- Screen System: `ScreenManager` + `MainMenu/LevelSelect/Deployment/Battle/Result` 已接入主循环。
-- Level / Scenario / Spawn System: 关卡地图数据、场景配置、实体生成职责已分离。
-- Deployment Phase: 战斗前部署阶段已实现，支持部署区高亮、名单选择、放置与开战传参。
-- Grid / Tile System: `Grid`、`Tile`、`DualGrid` 已实现，支持双战场与中间 gap。
-- Unit System: `UnitConfig`、`UnitState`、`Unit` 已实现，支持基础状态操作。
-- Movement System (Dijkstra): 可达范围与路径预览计算可用。
-- Combat System: `damage_calculator.py` 负责纯伤害计算，`combat_system.py` 负责攻击距离判断。
-- Turn System: `TurnManager` 管理阵营切换、已行动状态与回合结束判断。
-- Enemy AI: `enemy_ai.py` 支持攻击/移动/等待决策。
-- Pygame Rendering/UI: 地图、单位、高亮、路径预览、底部面板和单位信息显示已接入。
+- Screen System: `ScreenManager` + `MainMenu / LevelSelect / Deployment / Battle / Result` 已接入。
+- Level/Scenario/Spawn: `Level`（地图数据）/`Scenario`（战斗配置）/`SpawnSystem`（实体生成）职责分离。
+- Deployment Phase: 战前部署可选择 roster 单位并放置到部署区，再进入战斗。
+- Dual Battlefield: 双战场 + 中间 gap 规则已实现，跨战场攻击可判定。
+- Unit/Turn/AI: 多单位回合、已行动状态、敌方逐单位行动已实现。
+- Movement/Combat: Dijkstra 可达范围、路径预览、基础伤害与射程判定已实现。
+- Skill System (MVP):
+  - 新增 `Skill` 实体与 `SkillMenu`、`SkillState`
+  - 支持示例技能 `Power Strike`（150% 伤害）
+  - `Knight` 默认携带该技能
+- Battle Log System:
+  - 记录开战、回合切换、攻击、击杀、等待、结算
+  - 玩家/敌方攻击日志分色显示
+  - 长日志自动换行
+  - 移动日志保留数据但默认不在战斗 UI 显示
+- Responsive UI Layout:
+  - 布局保持 `11114 / 11114 / 22334`
+  - 1: 战场，2: 单位信息，3: 行动/技能，4: 战斗日志
+  - 基于 `screen.get_width()/get_height()` 比例计算
+  - 支持运行中拖拽窗口实时重排（battle/deployment/menu/result）
 
 ## Gameplay (Current Prototype)
 
 - 主流程：`Main Menu -> Level Select -> Deployment -> Battle -> Result`。
-- 部署阶段可在玩家部署区放置 `player_roster` 单位，全部完成后进入战斗。
-- 战斗中可点击任意存活单位查看信息；仅玩家未行动单位可执行 `Move/Attack/Wait`。
-- 移动模式显示可达格与路径预览；攻击模式显示可攻击范围。
-- 敌方在敌方回合自动依次行动，回合自动切换。
+- 部署阶段：选择单位并放置到玩家部署区，完成后开始战斗。
+- 战斗阶段：
+  - 选择单位后可执行 `Move / Attack / Skill / Wait`
+  - `Skill` 可选择技能后点目标释放
+  - 右键可取消 `Move/Attack/Skill` 状态，避免无目标时卡住
+- 敌方回合自动行动，回合自动切换。
+- 右侧日志栏实时显示关键战斗事件。
 
 ## Next Possible Improvements
 
-- 部署阶段增加拖拽放置、撤回与一键自动部署。
-- 多场景配置与章节化关卡选择。
-- 技能系统、Buff/Debuff 与更完整的战斗日志。
-- 更丰富的 AI 策略（仇恨、站位、集火、风险评估）。
-- 结果页统计信息（伤害、击杀、回合数）。
+- 技能系统扩展：冷却、消耗、AOE、治疗、Buff/Debuff。
+- 技能选择体验优化：范围高亮、无效目标提示、键盘快捷键。
+- 战斗日志增强：分页/滚动、筛选、历史回放。
+- 地图与场景扩展：多关卡、多胜利条件、脚本事件。
+- 更高级 AI：仇恨、站位、集火和风险评估。
 
 ## Notes
 
-- Current prototype focuses on architecture validation and modularity.
-- Logic and rendering are intentionally split for easier scaling and testing.
+- 当前版本重点是架构验证和模块边界清晰。
+- 游戏逻辑与渲染/UI 仍保持分层，便于后续扩展。

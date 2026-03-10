@@ -10,6 +10,7 @@ from game.battle.movement.grid import DualGrid
 from game.battle.turn.turn_manager import ENEMY, PLAYER, TurnManager
 from game.controllers.enemy_controller import EnemyController
 from game.core.game_state import GameState
+from game.entity.skill import Skill
 from game.entity.unit import Unit
 from game.levels.level.level_loader import load_level
 from game.levels.scenario.scenario_loader import load_scenario
@@ -20,14 +21,18 @@ from game.render.map_renderer import TILE_SIZE, render_map
 from game.render.path_renderer import draw_path_preview
 from game.state.idle_state import IdleState
 from game.ui.action_menu import ActionMenu
+from game.ui.battle_log import BattleLog
+from game.ui.skill_menu import SkillMenu
 from game.ui.ui_system import UISystem
 
 BACKGROUND_COLOR = (245, 245, 245)
 WINDOW_TITLE = "TBS Game - Dual Battlefield"
 
-BATTLEFIELD_AREA_HEIGHT = 320
-BOTTOM_PANEL_HEIGHT = 220
-WINDOW_WIDTH = 980
+WINDOW_WIDTH = 1280
+WINDOW_HEIGHT = 720
+RIGHT_LOG_RATIO = 0.25
+BOTTOM_UI_RATIO = 0.30
+UNIT_INFO_RATIO = 0.38
 PLAYER_TEAM_ID = 1
 ENEMY_TEAM_ID = 2
 
@@ -82,50 +87,36 @@ class Game:
             enemy_team_id=ENEMY_TEAM_ID,
         )
 
+        # 中文注释：战斗日志由 Game 持有，供状态机、控制器和 UI 统一读写。
+        self.battle_log = BattleLog()
+
         self.tile_size = TILE_SIZE
         self.map_pixel_width = self.grid.width * self.tile_size
         self.map_pixel_height = self.grid.height * self.tile_size
 
-        self.window_width = max(WINDOW_WIDTH, self.map_pixel_width + 80)
-        self.window_height = BATTLEFIELD_AREA_HEIGHT + BOTTOM_PANEL_HEIGHT
+        # 中文注释：窗口尺寸优先沿用当前 display，再按地图最小显示需求兜底扩展。
+        current_surface = pygame.display.get_surface()
+        if current_surface is not None:
+            base_width, base_height = current_surface.get_size()
+        else:
+            base_width, base_height = WINDOW_WIDTH, WINDOW_HEIGHT
 
-        self.screen = pygame.display.set_mode((self.window_width, self.window_height))
+        min_width = int((self.map_pixel_width + 80) / (1.0 - RIGHT_LOG_RATIO))
+        min_height = int((self.map_pixel_height + 80) / (1.0 - BOTTOM_UI_RATIO))
+        self.window_width = max(base_width, min_width)
+        self.window_height = max(base_height, min_height)
+
+        self.screen = pygame.display.set_mode((self.window_width, self.window_height), pygame.RESIZABLE)
         pygame.display.set_caption(WINDOW_TITLE)
-
-        # 中文注释：屏幕分区，上方是战场区域，下方是信息与行动面板。
-        self.battlefield_rect = pygame.Rect(0, 0, self.window_width, BATTLEFIELD_AREA_HEIGHT)
-        self.bottom_panel_rect = pygame.Rect(0, BATTLEFIELD_AREA_HEIGHT, self.window_width, BOTTOM_PANEL_HEIGHT)
-
-        unit_panel_width = int(self.window_width * 0.38)
-        self.unit_info_panel_rect = pygame.Rect(
-            self.bottom_panel_rect.x,
-            self.bottom_panel_rect.y,
-            unit_panel_width,
-            self.bottom_panel_rect.height,
-        )
-        self.action_panel_rect = pygame.Rect(
-            self.unit_info_panel_rect.right,
-            self.bottom_panel_rect.y,
-            self.window_width - unit_panel_width,
-            self.bottom_panel_rect.height,
-        )
-
-        # 中文注释：战场网格在上方区域居中显示。
-        self.battlefield_origin = (
-            self.battlefield_rect.x + (self.battlefield_rect.width - self.map_pixel_width) // 2,
-            self.battlefield_rect.y + (self.battlefield_rect.height - self.map_pixel_height) // 2,
-        )
 
         self.game_state = GameState.IDLE
         self.current_state = IdleState()
         self.selected_unit: Unit | None = None
+        self.selected_skill: Skill | None = None
 
-        self.action_menu = ActionMenu(
-            x=self.action_panel_rect.x + 24,
-            y=self.action_panel_rect.y + 86,
-            width=min(220, self.action_panel_rect.width - 48),
-            item_height=44,
-        )
+        # 中文注释：先构造菜单对象，具体位置在 _recalculate_layout 中更新。
+        self.action_menu = ActionMenu()
+        self.skill_menu = SkillMenu(x=0, y=0)
 
         self.combat_system = CombatSystem(self.grid)
         self.enemy_controller = EnemyController(
@@ -133,6 +124,7 @@ class Game:
             units=self.units,
             turn_manager=self.turn_manager,
             enemy_team_id=ENEMY_TEAM_ID,
+            battle_log=self.battle_log,
         )
         self.highlight_system = HighlightSystem(
             grid=self.grid,
@@ -142,17 +134,106 @@ class Game:
             tile_size=self.tile_size,
             player_camp=PLAYER,
         )
+
+        # 中文注释：先初始化占位 UISystem，再由 _recalculate_layout 写入真实布局。
+        zero = pygame.Rect(0, 0, 1, 1)
         self.ui_system = UISystem(
+            screen=self.screen,
+            ui_panel_rect=zero,
+            unit_info_rect=zero,
+            action_panel_rect=zero,
+            log_panel_rect=zero,
+            action_menu=self.action_menu,
+            selected_unit_provider=self.get_selected_unit,
+            battle_log=self.battle_log,
+        )
+
+        self._recalculate_layout()
+
+        self.running = True
+        self.events: list[pygame.event.Event] = []
+
+    def _recalculate_layout(self) -> None:
+        """按当前窗口尺寸重算战场与 UI 布局。"""
+        screen_width = self.screen.get_width()
+        screen_height = self.screen.get_height()
+
+        log_panel_width = max(220, int(screen_width * RIGHT_LOG_RATIO))
+        bottom_panel_height = max(160, int(screen_height * BOTTOM_UI_RATIO))
+        main_area_width = max(320, screen_width - log_panel_width)
+        battlefield_height = max(220, screen_height - bottom_panel_height)
+
+        self.window_width = screen_width
+        self.window_height = screen_height
+
+        # 中文注释：区域4是最右侧整列日志栏；区域1/2/3在左侧主内容区。
+        self.log_panel_rect = pygame.Rect(
+            screen_width - log_panel_width,
+            0,
+            log_panel_width,
+            screen_height,
+        )
+        self.battlefield_rect = pygame.Rect(0, 0, main_area_width, battlefield_height)
+        self.bottom_panel_rect = pygame.Rect(0, battlefield_height, main_area_width, bottom_panel_height)
+
+        unit_panel_width = max(220, int(self.bottom_panel_rect.width * UNIT_INFO_RATIO))
+        unit_panel_width = min(unit_panel_width, max(220, self.bottom_panel_rect.width - 220))
+        self.unit_info_panel_rect = pygame.Rect(
+            self.bottom_panel_rect.x,
+            self.bottom_panel_rect.y,
+            unit_panel_width,
+            self.bottom_panel_rect.height,
+        )
+        self.action_panel_rect = pygame.Rect(
+            self.unit_info_panel_rect.right,
+            self.bottom_panel_rect.y,
+            self.bottom_panel_rect.width - unit_panel_width,
+            self.bottom_panel_rect.height,
+        )
+
+        # 中文注释：战场网格在区域1中居中显示。
+        self.battlefield_origin = (
+            self.battlefield_rect.x + (self.battlefield_rect.width - self.map_pixel_width) // 2,
+            self.battlefield_rect.y + (self.battlefield_rect.height - self.map_pixel_height) // 2,
+        )
+
+        # 中文注释：Action/Skill 菜单锚点和尺寸按区域3比例计算，避免固定像素。
+        action_margin_x = max(12, int(self.action_panel_rect.width * 0.08))
+        action_margin_y = max(12, int(self.action_panel_rect.height * 0.18))
+        menu_x = self.action_panel_rect.x + action_margin_x
+        menu_y = self.action_panel_rect.y + action_margin_y
+        menu_width = min(
+            max(160, int(self.action_panel_rect.width * 0.55)),
+            max(120, self.action_panel_rect.width - action_margin_x * 2),
+        )
+
+        self.action_menu.x = menu_x
+        self.action_menu.y = menu_y
+        self.action_menu.width = menu_width
+        self.action_menu.item_height = max(34, int(self.action_panel_rect.height * 0.20))
+
+        self.skill_menu.x = menu_x
+        self.skill_menu.y = menu_y
+        self.skill_menu.width = menu_width
+        self.skill_menu.item_height = max(32, int(self.action_panel_rect.height * 0.18))
+
+        self.ui_system.update_layout(
             screen=self.screen,
             ui_panel_rect=self.bottom_panel_rect,
             unit_info_rect=self.unit_info_panel_rect,
             action_panel_rect=self.action_panel_rect,
-            action_menu=self.action_menu,
-            selected_unit_provider=self.get_selected_unit,
+            log_panel_rect=self.log_panel_rect,
         )
 
-        self.running = True
-        self.events: list[pygame.event.Event] = []
+    def _resize_window(self, width: int, height: int) -> None:
+        """处理窗口尺寸变化并实时重排布局。"""
+        min_width = int((self.map_pixel_width + 80) / (1.0 - RIGHT_LOG_RATIO))
+        min_height = int((self.map_pixel_height + 80) / (1.0 - BOTTOM_UI_RATIO))
+        new_width = max(width, min_width)
+        new_height = max(height, min_height)
+
+        self.screen = pygame.display.set_mode((new_width, new_height), pygame.RESIZABLE)
+        self._recalculate_layout()
 
     def _apply_level_terrain(self, level_data: dict[str, object]) -> None:
         """将关卡地形数据写入 grid tile。"""
@@ -183,6 +264,10 @@ class Game:
                 self.running = False
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 self.running = False
+            elif event.type == pygame.VIDEORESIZE:
+                self._resize_window(event.w, event.h)
+            elif event.type == getattr(pygame, "WINDOWSIZECHANGED", -1):
+                self._resize_window(event.x, event.y)
 
     def update(self) -> None:
         """更新游戏逻辑：回合流转、玩家输入处理与 AI 行为。"""
@@ -198,9 +283,11 @@ class Game:
                 self.game_state = GameState.IDLE
                 self.current_state = IdleState()
                 self.selected_unit = None
+                self.selected_skill = None
 
             if self.selected_unit is not None and not self.selected_unit.state.alive:
                 self.selected_unit = None
+                self.selected_skill = None
                 self.game_state = GameState.IDLE
                 self.current_state = IdleState()
 
@@ -211,11 +298,14 @@ class Game:
             )
         elif self.turn_manager.current_camp == ENEMY:
             self.selected_unit = None
+            self.selected_skill = None
             self.game_state = GameState.ENEMY_TURN
             self.enemy_controller.update()
 
         if self.turn_manager.is_turn_finished():
             self.turn_manager.next_turn()
+            next_turn_text = "Player Turn" if self.turn_manager.current_camp == PLAYER else "Enemy Turn"
+            self.battle_log.add(next_turn_text, category="turn", side="neutral")
 
     def render(self) -> None:
         """渲染画面：地图、高亮、路径、UI。"""
@@ -233,6 +323,13 @@ class Game:
         else:
             self.action_menu.hide()
 
+        if self._should_show_skill_menu():
+            if self.selected_unit is not None:
+                self.skill_menu.set_skills(self.selected_unit.skills)
+            self.skill_menu.show()
+        else:
+            self.skill_menu.hide()
+
         self.screen.fill(BACKGROUND_COLOR)
         render_map(
             self.screen,
@@ -246,11 +343,21 @@ class Game:
         draw_attack_highlights(self.screen, attack_highlight_tiles, self.tile_size, origin=self.battlefield_origin)
         draw_path_preview(self.screen, path_preview, self.tile_size, origin=self.battlefield_origin)
         self.ui_system.render(self.units, self.turn_manager.current_camp)
+        self.skill_menu.draw(self.screen)
         pygame.display.flip()
 
     def _should_show_action_menu(self) -> bool:
         # 中文注释：仅当当前选中单位“可由玩家操作”时显示行动菜单。
         return self.game_state == GameState.UNIT_SELECTED and self.can_command_selected_unit()
+
+    def _should_show_skill_menu(self) -> bool:
+        # 中文注释：技能菜单仅在技能模式且单位有技能时显示。
+        return (
+            self.game_state == GameState.SKILL_MODE
+            and self.can_command_selected_unit()
+            and self.selected_unit is not None
+            and len(self.selected_unit.skills) > 0
+        )
 
     def _has_alive_units(self, team_id: int) -> bool:
         return any(unit.state.alive and unit.state.team_id == team_id for unit in self.units)

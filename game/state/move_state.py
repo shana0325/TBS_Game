@@ -27,8 +27,21 @@ class MoveState(GameStateBase):
             return IdleState()
 
         for event in events:
-            if event.type != pygame.MOUSEBUTTONDOWN or event.button != 1:
+            if event.type != pygame.MOUSEBUTTONDOWN:
                 continue
+
+            # 中文注释：右键可随时取消移动模式，避免无目标时卡住。
+            if event.button == 3:
+                game.game_state = GameState.IDLE
+                return IdleState()
+
+            if event.button != 1:
+                continue
+
+            # 中文注释：左键点击战场外也取消当前模式。
+            if not battlefield_rect.collidepoint(event.pos):
+                game.game_state = GameState.IDLE
+                return IdleState()
 
             target = game.screen_to_grid(event.pos)
             if target is None:
@@ -53,7 +66,17 @@ class MoveState(GameStateBase):
             if (target_x, target_y) not in reachable_positions:
                 return self
 
+            from_pos = actor.state.pos
             actor.move_to(target_x, target_y)
+
+            # 中文注释：记录玩家移动事件（数据保留，但 UI 层可选择不显示）。
+            actor_name = getattr(actor, "name", "Unit")
+            game.battle_log.add(
+                f"{actor_name} moves {from_pos} -> {(target_x, target_y)}",
+                category="move",
+                side="player",
+            )
+
             game.turn_manager.mark_acted(actor)
             game.selected_unit = None
             game.game_state = GameState.IDLE

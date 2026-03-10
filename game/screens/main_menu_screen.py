@@ -20,6 +20,12 @@ class MainMenuScreen(ScreenBase):
             if event.type == pygame.QUIT:
                 self.manager.running = False
                 return
+            if event.type == pygame.VIDEORESIZE:
+                self.manager.screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+                continue
+            if event.type == getattr(pygame, "WINDOWSIZECHANGED", -1):
+                self.manager.screen = pygame.display.set_mode((event.x, event.y), pygame.RESIZABLE)
+                continue
             if event.type != pygame.KEYDOWN:
                 continue
 
@@ -48,3 +54,4 @@ class MainMenuScreen(ScreenBase):
         screen.blit(quit_surface, (80, 235))
 
         pygame.display.flip()
+

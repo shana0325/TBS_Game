@@ -27,8 +27,21 @@ class AttackState(GameStateBase):
             return IdleState()
 
         for event in events:
-            if event.type != pygame.MOUSEBUTTONDOWN or event.button != 1:
+            if event.type != pygame.MOUSEBUTTONDOWN:
                 continue
+
+            # 中文注释：右键可随时取消攻击模式，避免无可攻击目标时卡住。
+            if event.button == 3:
+                game.game_state = GameState.IDLE
+                return IdleState()
+
+            if event.button != 1:
+                continue
+
+            # 中文注释：左键点击战场外也取消当前模式。
+            if not battlefield_rect.collidepoint(event.pos):
+                game.game_state = GameState.IDLE
+                return IdleState()
 
             target_pos = game.screen_to_grid(event.pos)
             if target_pos is None:
@@ -41,6 +54,18 @@ class AttackState(GameStateBase):
             if game.combat_system.is_in_attack_range(actor, target_unit):
                 damage = calculate_damage(actor, target_unit, terrain_bonus=0)
                 target_unit.take_damage(damage)
+
+                # 中文注释：记录玩家攻击事件与可能的击杀结果。
+                attacker_name = getattr(actor, "name", "Unit")
+                defender_name = getattr(target_unit, "name", "Unit")
+                game.battle_log.add(
+                    f"{attacker_name} attacks {defender_name} for {damage} damage",
+                    category="attack",
+                    side="player",
+                )
+                if not target_unit.state.alive:
+                    game.battle_log.add(f"{defender_name} is defeated", category="defeat", side="enemy")
+
                 game.turn_manager.mark_acted(actor)
                 game.selected_unit = None
                 game.game_state = GameState.IDLE

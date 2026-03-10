@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from game.entity.skill import Skill
 from game.entity.unit import Unit, UnitConfig, UnitState
 
 
@@ -144,6 +145,21 @@ class SpawnSystem:
             alive=True,
             team_id=team_id,
         )
-        unit = Unit(config=config, state=state)
+        skills = cls._default_skills_for_unit(unit_type)
+        unit = Unit(config=config, state=state, skills=skills)
         setattr(unit, "name", unit_type)
         return unit
+
+    @classmethod
+    def _default_skills_for_unit(cls, unit_type: str) -> list[Skill]:
+        # 中文注释：最小版本只给 Knight 配置 Power Strike。
+        if unit_type == "Knight":
+            return [
+                Skill(
+                    name="Power Strike",
+                    power=1.5,
+                    min_range=1,
+                    max_range=1,
+                )
+            ]
+        return []

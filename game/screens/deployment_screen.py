@@ -5,7 +5,7 @@ from __future__ import annotations
 import pygame
 
 from game.battle.movement.grid import DualGrid
-from game.core.game import BOTTOM_PANEL_HEIGHT, BATTLEFIELD_AREA_HEIGHT, ENEMY_TEAM_ID, PLAYER_TEAM_ID
+from game.core.game import BOTTOM_UI_RATIO, ENEMY_TEAM_ID, PLAYER_TEAM_ID
 from game.levels.level.level_loader import load_level
 from game.levels.scenario.scenario_loader import load_scenario
 from game.levels.systems.spawn_system import SpawnSystem
@@ -62,17 +62,6 @@ class DeploymentScreen(ScreenBase):
         self.tile_size = TILE_SIZE
         self.map_pixel_width = self.grid.width * self.tile_size
         self.map_pixel_height = self.grid.height * self.tile_size
-        self.window_width = self.manager.screen.get_width()
-        self.window_height = self.manager.screen.get_height()
-
-        self.battlefield_rect = pygame.Rect(0, 0, self.window_width, BATTLEFIELD_AREA_HEIGHT)
-        self.bottom_panel_rect = pygame.Rect(0, BATTLEFIELD_AREA_HEIGHT, self.window_width, BOTTOM_PANEL_HEIGHT)
-        self.roster_panel_rect = pygame.Rect(0, BATTLEFIELD_AREA_HEIGHT, int(self.window_width * 0.55), BOTTOM_PANEL_HEIGHT)
-        self.action_panel_rect = pygame.Rect(self.roster_panel_rect.right, BATTLEFIELD_AREA_HEIGHT, self.window_width - self.roster_panel_rect.width, BOTTOM_PANEL_HEIGHT)
-        self.battlefield_origin = (
-            self.battlefield_rect.x + (self.battlefield_rect.width - self.map_pixel_width) // 2,
-            self.battlefield_rect.y + (self.battlefield_rect.height - self.map_pixel_height) // 2,
-        )
 
         # 字体设置
         FONT_PATH = r"C:\Windows\Fonts\msyh.ttc"
@@ -81,18 +70,55 @@ class DeploymentScreen(ScreenBase):
         self.small_font = pygame.font.Font(FONT_PATH, 24)
 
         self.slot_rects: list[pygame.Rect] = []
-        self.start_button_rect = pygame.Rect(
-            self.action_panel_rect.x + 24,
-            self.action_panel_rect.y + 130,
-            max(180, self.action_panel_rect.width - 48),
-            48,
+        self.start_button_rect = pygame.Rect(0, 0, 0, 0)
+
+        self._recalculate_layout()
+
+    def _recalculate_layout(self) -> None:
+        # 中文注释：按当前窗口尺寸重算部署界面布局，支持实时缩放。
+        self.window_width = self.manager.screen.get_width()
+        self.window_height = self.manager.screen.get_height()
+
+        bottom_panel_height = max(160, int(self.window_height * BOTTOM_UI_RATIO))
+        battlefield_height = self.window_height - bottom_panel_height
+
+        self.battlefield_rect = pygame.Rect(0, 0, self.window_width, battlefield_height)
+        self.bottom_panel_rect = pygame.Rect(0, battlefield_height, self.window_width, bottom_panel_height)
+        self.roster_panel_rect = pygame.Rect(0, battlefield_height, int(self.window_width * 0.55), bottom_panel_height)
+        self.action_panel_rect = pygame.Rect(
+            self.roster_panel_rect.right,
+            battlefield_height,
+            self.window_width - self.roster_panel_rect.width,
+            bottom_panel_height,
         )
+        self.battlefield_origin = (
+            self.battlefield_rect.x + (self.battlefield_rect.width - self.map_pixel_width) // 2,
+            self.battlefield_rect.y + (self.battlefield_rect.height - self.map_pixel_height) // 2,
+        )
+
+        self.start_button_rect = pygame.Rect(
+            self.action_panel_rect.x + max(12, int(self.action_panel_rect.width * 0.06)),
+            self.action_panel_rect.y + max(20, int(self.action_panel_rect.height * 0.58)),
+            max(180, int(self.action_panel_rect.width * 0.74)),
+            max(42, int(self.action_panel_rect.height * 0.22)),
+        )
+
+    def _resize_window(self, width: int, height: int) -> None:
+        self.manager.screen = pygame.display.set_mode((max(860, width), max(620, height)), pygame.RESIZABLE)
+        self._recalculate_layout()
 
     def handle_input(self) -> None:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.manager.running = False
                 return
+
+            if event.type == pygame.VIDEORESIZE:
+                self._resize_window(event.w, event.h)
+                continue
+            if event.type == getattr(pygame, "WINDOWSIZECHANGED", -1):
+                self._resize_window(event.x, event.y)
+                continue
 
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 from game.screens.level_select_screen import LevelSelectScreen
@@ -223,7 +249,7 @@ class DeploymentScreen(ScreenBase):
             btn_text,
             (
                 self.start_button_rect.x + (self.start_button_rect.width - btn_text.get_width()) // 2,
-                self.start_button_rect.y + 12,
+                self.start_button_rect.y + (self.start_button_rect.height - btn_text.get_height()) // 2,
             ),
         )
 

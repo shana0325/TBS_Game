@@ -19,6 +19,7 @@ class IdleState(GameStateBase):
     ) -> GameStateBase:
         from game.state.attack_state import AttackState
         from game.state.move_state import MoveState
+        from game.state.skill_state import SkillState
 
         if game.game_state == GameState.IDLE:
             for event in events:
@@ -52,10 +53,18 @@ class IdleState(GameStateBase):
                     if option == "Attack":
                         game.game_state = GameState.ATTACK_MODE
                         return AttackState()
+                    if option == "Skill":
+                        if game.selected_unit is not None and game.selected_unit.skills:
+                            game.selected_skill = None
+                            game.game_state = GameState.SKILL_MODE
+                            return SkillState()
                     if option == "Wait":
                         if game.selected_unit is not None:
                             game.turn_manager.mark_acted(game.selected_unit)
+                            unit_name = getattr(game.selected_unit, "name", "Unit")
+                            game.battle_log.add(f"{unit_name} waits", category="wait", side="player")
                         game.selected_unit = None
+                        game.selected_skill = None
                         game.game_state = GameState.IDLE
                         return self
 
