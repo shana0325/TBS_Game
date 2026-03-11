@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pygame
 
+from game.core import texts
+
 from game.core.game_state import GameState
 from game.state.game_state_base import GameStateBase
 
@@ -72,4 +74,5 @@ class AttackState(GameStateBase):
             return self
 
         return self
+
 

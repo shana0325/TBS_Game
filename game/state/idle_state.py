@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pygame
 
+from game.core import texts
 from game.core.game_state import GameState
 from game.state.game_state_base import GameStateBase
 
@@ -47,19 +48,19 @@ class IdleState(GameStateBase):
                 # 中文注释：只有可操作单位（玩家且未行动）才响应行动菜单点击。
                 if game.can_command_selected_unit():
                     option = game.action_menu.get_option_at_pos(event.pos)
-                    if option == "Move":
+                    if option == "move":
                         game.game_state = GameState.MOVE_MODE
                         return MoveState()
-                    if option == "Attack":
+                    if option == "attack":
                         game.game_state = GameState.ATTACK_MODE
                         return AttackState()
-                    if option == "Skill":
+                    if option == "skill":
                         # 中文注释：被沉默单位不可进入技能模式。
                         if game.selected_unit is not None and game.selected_unit.skills and not game.selected_unit.is_silenced():
                             game.selected_skill = None
                             game.game_state = GameState.SKILL_MODE
                             return SkillState()
-                    if option == "Wait":
+                    if option == "wait":
                         if game.selected_unit is not None:
                             game.turn_manager.mark_acted(game.selected_unit)
                             unit_name = getattr(game.selected_unit, "name", "Unit")
@@ -78,4 +79,3 @@ class IdleState(GameStateBase):
                         return self
 
         return self
-

@@ -3,10 +3,10 @@
     {
       "id": "hero_001",
       "type": "Hero",
-      "level": 1,
+      "level": 2,
       "exp": 0,
-      "stat_points": 0,
-      "skill_points": 0,
+      "stat_points": 2,
+      "skill_points": 1,
       "equipment": [],
       "allocated_stats": {
         "attack": 4,
@@ -28,10 +28,10 @@
     {
       "id": "knight_001",
       "type": "Knight",
-      "level": 1,
+      "level": 2,
       "exp": 0,
-      "stat_points": 0,
-      "skill_points": 3,
+      "stat_points": 2,
+      "skill_points": 4,
       "equipment": [],
       "allocated_stats": {
         "defense": 1,

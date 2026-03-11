@@ -69,8 +69,9 @@ class UnitInfoPanel:
         buffs = getattr(unit, "buffs", [])
         if not buffs:
             return texts.PROGRESSION_NO_DESCRIPTION
-        return " / ".join(texts.get_buff_description(getattr(buff, "name", "")) for buff in buffs[:2])
+        return " / ".join(texts.get_buff_name(getattr(buff, "name", "")) for buff in buffs[:2])
 
     def _draw_text(self, text: str, font: pygame.font.Font, x: int, y: int, color: tuple[int, int, int]) -> None:
         surface = font.render(text, True, color)
         self.screen.blit(surface, (x, y))
+

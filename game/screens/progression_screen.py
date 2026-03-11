@@ -235,7 +235,7 @@ class ProgressionScreen(ScreenBase):
 
             learned = skill_id in learned_skills
             equipped = skill_id in equipped_skills
-            name_surface = self.text_font.render(skill_id, True, (245, 240, 228))
+            name_surface = self.text_font.render(texts.get_skill_name(skill_id), True, (245, 240, 228))
             range_surface = self.small_font.render(texts.format_range(int(skill_data.get('min_range', 1)), int(skill_data.get('max_range', 1))), True, (224, 210, 180))
             state_text = texts.PROGRESSION_SKILL_STATE_EQUIPPED if equipped else (texts.PROGRESSION_SKILL_STATE_LEARNED if learned else texts.PROGRESSION_SKILL_STATE_LOCKED)
             state_color = (170, 230, 170) if equipped else ((180, 210, 255) if learned else (220, 190, 170))
@@ -417,7 +417,7 @@ class ProgressionScreen(ScreenBase):
             buff_id = str(effect.get("buff", effect.get("name", "")))
             if not buff_id:
                 continue
-            names.append(texts.get_buff_description(buff_id))
+            names.append(texts.get_buff_name(buff_id))
         return names
 
     def _draw_wrapped_text(
@@ -515,6 +515,7 @@ class ProgressionScreen(ScreenBase):
             return
         from game.screens.level_select_screen import LevelSelectScreen
         self.manager.switch_to(LevelSelectScreen(self.manager))
+
 
 
 

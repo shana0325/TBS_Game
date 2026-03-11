@@ -224,6 +224,7 @@ Rules:
 - Prefer responding in Chinese unless the user explicitly requests another language.
 - Prefer adding new feature modules instead of changing existing behavior directly, unless refactor/fix is explicitly requested.
 - Implementing module functionality must include at least Chinese comments describing the module functionality.
+- Keep the current `texts` / `i18n` interface structure unchanged; for future text changes, default to maintaining only Chinese content unless the user explicitly requests English updates.
 
 ---
 
@@ -287,3 +288,4 @@ Use these preferred extension paths:
 - new battle rendering overlay -> `render/`
 
 If unsure, extend existing systems rather than rewriting them.
+

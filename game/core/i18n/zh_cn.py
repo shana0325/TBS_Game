@@ -5,14 +5,14 @@ from __future__ import annotations
 WINDOW_TITLE = "战棋原型"
 
 MAIN_MENU_TITLE = "战棋原型"
-MAIN_MENU_START = "Enter/Space：开始游戏"
-MAIN_MENU_QUIT = "ESC：退出游戏"
+MAIN_MENU_START = "开始游戏"
+MAIN_MENU_QUIT = "退出游戏"
 
 LEVEL_SELECT_TITLE = "关卡选择"
 LEVEL_SELECT_SCENARIO = "场景 1（level_1）"
-LEVEL_SELECT_DEPLOYMENT = "Enter：进入部署"
-LEVEL_SELECT_PROGRESSION = "P：角色成长"
-LEVEL_SELECT_BACK = "ESC：返回主菜单"
+LEVEL_SELECT_DEPLOYMENT = "进入部署"
+LEVEL_SELECT_PROGRESSION = "角色成长"
+LEVEL_SELECT_BACK = "返回主菜单"
 
 DEPLOYMENT_TITLE = "战前部署"
 DEPLOYMENT_TIPS = "点击左侧名单选择单位，再点击蓝色部署格放置"
@@ -69,6 +69,20 @@ BATTLE_VICTORY = "胜利"
 BATTLE_DEFEAT = "失败"
 BATTLE_ENDED = "战斗结束"
 
+SKILL_NAMES = {
+    "Power Strike": "强力打击",
+    "Poison Strike": "毒击",
+    "Regen Aura": "再生光环",
+    "Guard Shield": "守护护盾",
+    "Battle Chant": "战吼",
+    "Concussion Blow": "震荡打击",
+    "Counter Stance": "反击架势",
+    "War Banner": "战旗",
+    "Blood Rush": "嗜血冲动",
+    "Raise Skeleton": "召唤骷髅",
+    "Revive Prayer": "复苏祷言",
+}
+
 SKILL_DESCRIPTIONS = {
     "Power Strike": "造成 150% 攻击力的单体伤害。",
     "Poison Strike": "造成普通伤害，并为目标附加中毒。",
@@ -81,6 +95,19 @@ SKILL_DESCRIPTIONS = {
     "Blood Rush": "附加吸血效果，命中后恢复生命。",
     "Raise Skeleton": "召唤一个临时单位加入战场。",
     "Revive Prayer": "复活倒下目标并恢复部分生命。",
+}
+
+BUFF_NAMES = {
+    "poison": "中毒",
+    "burn": "灼烧",
+    "regen": "再生",
+    "attack_up": "攻击提升",
+    "counter": "反击",
+    "attack_aura": "攻击光环",
+    "lifesteal": "吸血",
+    "stun": "眩晕",
+    "silence": "沉默",
+    "shield": "护盾",
 }
 
 BUFF_DESCRIPTIONS = {
@@ -106,9 +133,19 @@ STATUS_TEXTS = {
 }
 
 
+def get_skill_name(skill_id: str) -> str:
+    """返回技能显示名称。"""
+    return SKILL_NAMES.get(skill_id, skill_id)
+
+
 def get_skill_description(skill_id: str) -> str:
     """返回技能说明文本。"""
     return SKILL_DESCRIPTIONS.get(skill_id, PROGRESSION_NO_DESCRIPTION)
+
+
+def get_buff_name(buff_id: str) -> str:
+    """返回 Buff 显示名称。"""
+    return BUFF_NAMES.get(buff_id, buff_id)
 
 
 def get_buff_description(buff_id: str) -> str:
@@ -159,19 +196,19 @@ def format_progression_message_no_stat_points(unit_name: str) -> str:
 
 
 def format_progression_message_learn(unit_name: str, skill_name: str) -> str:
-    return f"{unit_name} 学会了 {skill_name}"
+    return f"{unit_name} 学会了 {get_skill_name(skill_name)}"
 
 
 def format_progression_message_cannot_learn(skill_name: str) -> str:
-    return f"无法学习 {skill_name}"
+    return f"无法学习 {get_skill_name(skill_name)}"
 
 
 def format_progression_message_equip(unit_name: str, skill_name: str) -> str:
-    return f"{unit_name} 装备了 {skill_name}"
+    return f"{unit_name} 装备了 {get_skill_name(skill_name)}"
 
 
 def format_progression_message_cannot_equip(skill_name: str) -> str:
-    return f"无法装备 {skill_name}"
+    return f"无法装备 {get_skill_name(skill_name)}"
 
 
 def format_battle_attack(attacker_name: str, defender_name: str, damage: int) -> str:
@@ -199,7 +236,7 @@ def format_battle_level_up(unit_name: str, level: int) -> str:
 
 
 def format_battle_shield_absorb(unit_name: str, buff_name: str, absorbed: int) -> str:
-    return f"{unit_name} 的 {buff_name} 吸收了 {absorbed} 点伤害"
+    return f"{unit_name} 的 {get_buff_name(buff_name)} 吸收了 {absorbed} 点伤害"
 
 
 def format_battle_counter(unit_name: str, target_name: str, damage: int) -> str:
@@ -207,20 +244,21 @@ def format_battle_counter(unit_name: str, target_name: str, damage: int) -> str:
 
 
 def format_battle_trigger_heal(unit_name: str, heal_value: int, buff_name: str) -> str:
-    return f"{unit_name} 通过 {buff_name} 恢复 {heal_value} 点生命"
+    return f"{unit_name} 通过 {get_buff_name(buff_name)} 恢复 {heal_value} 点生命"
 
 
 def format_battle_tick_damage(unit_name: str, damage: int, buff_name: str) -> str:
-    return f"{unit_name} 因 {buff_name} 受到 {damage} 点持续伤害"
+    return f"{unit_name} 因 {get_buff_name(buff_name)} 受到 {damage} 点持续伤害"
 
 
 def format_battle_tick_heal(unit_name: str, heal_value: int, buff_name: str) -> str:
-    return f"{unit_name} 通过 {buff_name} 恢复 {heal_value} 点生命"
+    return f"{unit_name} 通过 {get_buff_name(buff_name)} 恢复 {heal_value} 点生命"
 
 
 def format_skill_menu_label(skill_name: str, power: float) -> str:
-    return f"{skill_name} x{power:.1f}"
+    return f"{get_skill_name(skill_name)} x{power:.1f}"
 
 
 def format_skill_use(user_name: str, skill_name: str, target_name: str, value: int) -> str:
-    return f"{user_name} 使用 {skill_name} 对 {target_name} 造成 {value} 点效果"
+    return f"{user_name} 使用 {get_skill_name(skill_name)} 对 {target_name} 造成 {value} 点效果"
+

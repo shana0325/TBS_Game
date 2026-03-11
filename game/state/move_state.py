@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pygame
 
+from game.core import texts
+
 from game.battle.movement.pathfinder import get_reachable_tiles
 from game.core.game_state import GameState
 from game.state.game_state_base import GameStateBase
@@ -83,4 +85,5 @@ class MoveState(GameStateBase):
             return IdleState()
 
         return self
+
 

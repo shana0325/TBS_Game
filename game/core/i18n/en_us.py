@@ -5,14 +5,14 @@ from __future__ import annotations
 WINDOW_TITLE = "TBS Prototype"
 
 MAIN_MENU_TITLE = "TBS Prototype"
-MAIN_MENU_START = "Enter/Space: Start Game"
-MAIN_MENU_QUIT = "ESC: Quit"
+MAIN_MENU_START = "Start Game"
+MAIN_MENU_QUIT = "Quit"
 
 LEVEL_SELECT_TITLE = "Level Select"
 LEVEL_SELECT_SCENARIO = "Scenario 1 (level_1)"
-LEVEL_SELECT_DEPLOYMENT = "Enter: Deployment"
-LEVEL_SELECT_PROGRESSION = "P: Progression"
-LEVEL_SELECT_BACK = "ESC: Back"
+LEVEL_SELECT_DEPLOYMENT = "Deployment"
+LEVEL_SELECT_PROGRESSION = "Progression"
+LEVEL_SELECT_BACK = "Back to Main Menu"
 
 DEPLOYMENT_TITLE = "Deployment"
 DEPLOYMENT_TIPS = "Click a unit on the left, then click a blue deployment tile."
@@ -69,6 +69,20 @@ BATTLE_VICTORY = "Victory"
 BATTLE_DEFEAT = "Defeat"
 BATTLE_ENDED = "Battle Ended"
 
+SKILL_NAMES = {
+    "Power Strike": "Power Strike",
+    "Poison Strike": "Poison Strike",
+    "Regen Aura": "Regen Aura",
+    "Guard Shield": "Guard Shield",
+    "Battle Chant": "Battle Chant",
+    "Concussion Blow": "Concussion Blow",
+    "Counter Stance": "Counter Stance",
+    "War Banner": "War Banner",
+    "Blood Rush": "Blood Rush",
+    "Raise Skeleton": "Raise Skeleton",
+    "Revive Prayer": "Revive Prayer",
+}
+
 SKILL_DESCRIPTIONS = {
     "Power Strike": "Deal 150% attack damage to one target.",
     "Poison Strike": "Deal normal damage and inflict poison.",
@@ -81,6 +95,19 @@ SKILL_DESCRIPTIONS = {
     "Blood Rush": "Gain lifesteal on hit.",
     "Raise Skeleton": "Summon a temporary allied unit.",
     "Revive Prayer": "Revive a fallen unit with partial HP.",
+}
+
+BUFF_NAMES = {
+    "poison": "Poison",
+    "burn": "Burn",
+    "regen": "Regeneration",
+    "attack_up": "Attack Up",
+    "counter": "Counter",
+    "attack_aura": "Attack Aura",
+    "lifesteal": "Lifesteal",
+    "stun": "Stun",
+    "silence": "Silence",
+    "shield": "Shield",
 }
 
 BUFF_DESCRIPTIONS = {
@@ -106,8 +133,16 @@ STATUS_TEXTS = {
 }
 
 
+def get_skill_name(skill_id: str) -> str:
+    return SKILL_NAMES.get(skill_id, skill_id)
+
+
 def get_skill_description(skill_id: str) -> str:
     return SKILL_DESCRIPTIONS.get(skill_id, PROGRESSION_NO_DESCRIPTION)
+
+
+def get_buff_name(buff_id: str) -> str:
+    return BUFF_NAMES.get(buff_id, buff_id)
 
 
 def get_buff_description(buff_id: str) -> str:
@@ -156,19 +191,19 @@ def format_progression_message_no_stat_points(unit_name: str) -> str:
 
 
 def format_progression_message_learn(unit_name: str, skill_name: str) -> str:
-    return f"{unit_name} learned {skill_name}"
+    return f"{unit_name} learned {get_skill_name(skill_name)}"
 
 
 def format_progression_message_cannot_learn(skill_name: str) -> str:
-    return f"Cannot learn {skill_name}"
+    return f"Cannot learn {get_skill_name(skill_name)}"
 
 
 def format_progression_message_equip(unit_name: str, skill_name: str) -> str:
-    return f"{unit_name} equipped {skill_name}"
+    return f"{unit_name} equipped {get_skill_name(skill_name)}"
 
 
 def format_progression_message_cannot_equip(skill_name: str) -> str:
-    return f"Cannot equip {skill_name}"
+    return f"Cannot equip {get_skill_name(skill_name)}"
 
 
 def format_battle_attack(attacker_name: str, defender_name: str, damage: int) -> str:
@@ -196,7 +231,7 @@ def format_battle_level_up(unit_name: str, level: int) -> str:
 
 
 def format_battle_shield_absorb(unit_name: str, buff_name: str, absorbed: int) -> str:
-    return f"{unit_name}'s {buff_name} absorbs {absorbed} damage"
+    return f"{unit_name}'s {get_buff_name(buff_name)} absorbs {absorbed} damage"
 
 
 def format_battle_counter(unit_name: str, target_name: str, damage: int) -> str:
@@ -204,20 +239,21 @@ def format_battle_counter(unit_name: str, target_name: str, damage: int) -> str:
 
 
 def format_battle_trigger_heal(unit_name: str, heal_value: int, buff_name: str) -> str:
-    return f"{unit_name} restores {heal_value} HP through {buff_name}"
+    return f"{unit_name} restores {heal_value} HP through {get_buff_name(buff_name)}"
 
 
 def format_battle_tick_damage(unit_name: str, damage: int, buff_name: str) -> str:
-    return f"{unit_name} takes {damage} damage from {buff_name}"
+    return f"{unit_name} takes {damage} damage from {get_buff_name(buff_name)}"
 
 
 def format_battle_tick_heal(unit_name: str, heal_value: int, buff_name: str) -> str:
-    return f"{unit_name} restores {heal_value} HP through {buff_name}"
+    return f"{unit_name} restores {heal_value} HP through {get_buff_name(buff_name)}"
 
 
 def format_skill_menu_label(skill_name: str, power: float) -> str:
-    return f"{skill_name} x{power:.1f}"
+    return f"{get_skill_name(skill_name)} x{power:.1f}"
 
 
 def format_skill_use(user_name: str, skill_name: str, target_name: str, value: int) -> str:
-    return f"{user_name} uses {skill_name} on {target_name} for {value} effect"
+    return f"{user_name} uses {get_skill_name(skill_name)} on {target_name} for {value} effect"
+

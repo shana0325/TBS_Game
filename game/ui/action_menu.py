@@ -17,6 +17,8 @@ MENU_TITLE_COLOR = (40, 40, 40)
 class ActionMenu:
     """Simple action menu for selected unit."""
 
+    COMMANDS = ("move", "attack", "skill", "wait")
+
     def __init__(
         self,
         x: int = 8,
@@ -28,7 +30,6 @@ class ActionMenu:
         self.y = y
         self.width = width
         self.item_height = item_height
-        self.options = list(texts.ACTION_MENU_OPTIONS)
         self.visible = False
         self._font: pygame.font.Font | None = None
         self._title_font: pygame.font.Font | None = None
@@ -56,7 +57,7 @@ class ActionMenu:
         screen.blit(title_surface, (self.x, self.y - 34))
 
         mouse_pos = pygame.mouse.get_pos()
-        for index, label in enumerate(self.options):
+        for index, label in enumerate(self._get_labels()):
             rect = self._item_rect(index)
             bg_color = MENU_HOVER_COLOR if rect.collidepoint(mouse_pos) else MENU_BG_COLOR
             pygame.draw.rect(screen, bg_color, rect)
@@ -70,10 +71,14 @@ class ActionMenu:
         if not self.visible:
             return None
 
-        for index, label in enumerate(self.options):
+        for index, _label in enumerate(self._get_labels()):
             if self._item_rect(index).collidepoint(pos):
-                return label
+                return self.COMMANDS[index]
         return None
 
     def _item_rect(self, index: int) -> pygame.Rect:
         return pygame.Rect(self.x, self.y + index * self.item_height, self.width, self.item_height)
+
+    def _get_labels(self) -> list[str]:
+        """按当前语言返回行动菜单显示文本。"""
+        return list(texts.ACTION_MENU_OPTIONS)
