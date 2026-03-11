@@ -72,7 +72,7 @@ class MoveState(GameStateBase):
             # 中文注释：记录玩家移动事件（数据保留，但 UI 层可选择不显示）。
             actor_name = getattr(actor, "name", "Unit")
             game.battle_log.add(
-                f"{actor_name} moves {from_pos} -> {(target_x, target_y)}",
+                texts.format_battle_move(actor_name, from_pos, (target_x, target_y)),
                 category="move",
                 side="player",
             )
@@ -83,3 +83,4 @@ class MoveState(GameStateBase):
             return IdleState()
 
         return self
+

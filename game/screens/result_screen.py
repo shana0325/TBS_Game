@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import pygame
 
+from game.core import texts
 from game.screens.screen_base import ScreenBase
+from game.ui.font_manager import get_font
+from game.ui.language_shortcut import handle_language_toggle
 
 
 class ResultScreen(ScreenBase):
@@ -13,8 +16,8 @@ class ResultScreen(ScreenBase):
     def __init__(self, manager: object, result_text: str) -> None:
         super().__init__(manager)
         self.result_text = result_text
-        self.title_font = pygame.font.Font(None, 60)
-        self.text_font = pygame.font.Font(None, 32)
+        self.title_font = get_font(60)
+        self.text_font = get_font(32)
 
     def handle_input(self) -> None:
         for event in pygame.event.get():
@@ -26,6 +29,8 @@ class ResultScreen(ScreenBase):
                 continue
             if event.type == getattr(pygame, "WINDOWSIZECHANGED", -1):
                 self.manager.screen = pygame.display.set_mode((event.x, event.y), pygame.RESIZABLE)
+                continue
+            if handle_language_toggle(event):
                 continue
             if event.type != pygame.KEYDOWN:
                 continue
@@ -48,10 +53,11 @@ class ResultScreen(ScreenBase):
         screen.fill((30, 30, 36))
 
         result_surface = self.title_font.render(self.result_text, True, (238, 232, 210))
-        tip_surface = self.text_font.render("Enter: Main Menu   ESC: Quit", True, (190, 205, 230))
+        tip_surface = self.text_font.render(texts.RESULT_TIP, True, (190, 205, 230))
 
         screen.blit(result_surface, (80, 120))
         screen.blit(tip_surface, (80, 220))
 
         pygame.display.flip()
+
 

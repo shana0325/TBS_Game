@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from game.battle.events.event_types import ON_ATTACK, ON_HIT, ON_KILL
+from game.core import texts
 
 if TYPE_CHECKING:
     from game.battle.events.battle_event import BattleEvent
@@ -78,7 +79,7 @@ class Buff:
         self._log(
             unit=unit,
             game=game,
-            message=f"{getattr(unit, 'name', 'Unit')} heals {actual_heal} from trigger {self.name}",
+            message=texts.format_battle_trigger_heal(getattr(unit, 'name', 'Unit'), actual_heal, self.name),
             category="trigger",
         )
 
@@ -143,7 +144,7 @@ class Buff:
         self._log(
             unit=unit,
             game=game,
-            message=f"{getattr(unit, 'name', 'Unit')} counter-attacks {getattr(attacker, 'name', 'Unit')} for {counter_damage} damage",
+            message=texts.format_battle_counter(getattr(unit, 'name', 'Unit'), getattr(attacker, 'name', 'Unit'), counter_damage),
             category="attack",
         )
 
@@ -156,7 +157,7 @@ class Buff:
                 self._log(
                     unit=unit,
                     game=game,
-                    message=f"{getattr(unit, 'name', 'Unit')} suffers {actual_damage} damage from {self.name}",
+                    message=texts.format_battle_tick_damage(getattr(unit, 'name', 'Unit'), actual_damage, self.name),
                     category="buff_tick",
                 )
 
@@ -169,7 +170,7 @@ class Buff:
                 self._log(
                     unit=unit,
                     game=game,
-                    message=f"{getattr(unit, 'name', 'Unit')} recovers {actual_heal} HP from {self.name}",
+                    message=texts.format_battle_tick_heal(getattr(unit, 'name', 'Unit'), actual_heal, self.name),
                     category="buff_tick",
                 )
 
@@ -184,3 +185,5 @@ class Buff:
 
         side = "player" if unit.state.team_id == 1 else "enemy"
         battle_log.add(message, category=category, side=side)
+
+

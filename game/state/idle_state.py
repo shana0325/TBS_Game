@@ -63,7 +63,7 @@ class IdleState(GameStateBase):
                         if game.selected_unit is not None:
                             game.turn_manager.mark_acted(game.selected_unit)
                             unit_name = getattr(game.selected_unit, "name", "Unit")
-                            game.battle_log.add(f"{unit_name} waits", category="wait", side="player")
+                            game.battle_log.add(texts.format_battle_wait(unit_name), category="wait", side="player")
                         game.selected_unit = None
                         game.selected_skill = None
                         game.game_state = GameState.IDLE
@@ -78,3 +78,4 @@ class IdleState(GameStateBase):
                         return self
 
         return self
+

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import pygame
 
+from game.core import texts
+from game.ui.font_manager import get_font
+
 MENU_BG_COLOR = (250, 250, 250)
 MENU_BORDER_COLOR = (80, 80, 80)
 MENU_TEXT_COLOR = (20, 20, 20)
@@ -25,7 +28,7 @@ class ActionMenu:
         self.y = y
         self.width = width
         self.item_height = item_height
-        self.options = ["Move", "Attack", "Skill", "Wait"]
+        self.options = list(texts.ACTION_MENU_OPTIONS)
         self.visible = False
         self._font: pygame.font.Font | None = None
         self._title_font: pygame.font.Font | None = None
@@ -41,16 +44,15 @@ class ActionMenu:
         self.y = y
 
     def draw(self, screen: pygame.Surface) -> None:
-        """Draw action menu when visible."""
         if not self.visible:
             return
 
         if self._font is None:
-            self._font = pygame.font.Font(None, 28)
+            self._font = get_font(28)
         if self._title_font is None:
-            self._title_font = pygame.font.Font(None, 30)
+            self._title_font = get_font(30)
 
-        title_surface = self._title_font.render("Actions", True, MENU_TITLE_COLOR)
+        title_surface = self._title_font.render(texts.ACTION_MENU_TITLE, True, MENU_TITLE_COLOR)
         screen.blit(title_surface, (self.x, self.y - 34))
 
         mouse_pos = pygame.mouse.get_pos()
@@ -65,7 +67,6 @@ class ActionMenu:
             screen.blit(text_surface, text_rect)
 
     def get_option_at_pos(self, pos: tuple[int, int]) -> str | None:
-        """Return clicked option label, or None if no menu item was hit."""
         if not self.visible:
             return None
 
@@ -75,9 +76,4 @@ class ActionMenu:
         return None
 
     def _item_rect(self, index: int) -> pygame.Rect:
-        return pygame.Rect(
-            self.x,
-            self.y + index * self.item_height,
-            self.width,
-            self.item_height,
-        )
+        return pygame.Rect(self.x, self.y + index * self.item_height, self.width, self.item_height)

@@ -15,6 +15,8 @@ TBS_Game/
   requirements.txt               # Python 依赖
 
   assets/
+    fonts/
+      LXGWWenKai-Light.ttf       # 默认中文字体文件
     maps/                        # 地图资源占位
     units/                       # 单位资源占位
     skills/                      # 技能资源占位
@@ -70,6 +72,11 @@ TBS_Game/
       game_app.py                # 预留：应用容器骨架
       input_handler.py           # 预留：输入分发骨架
       scene_manager.py           # 预留：场景切换骨架
+      texts.py                   # 文案统一访问入口（兼容层，代理到当前语言包）
+      i18n/
+        __init__.py              # 当前语言状态与语言包管理
+        zh_cn.py                 # 简体中文文案、说明文本、动态格式化
+        en_us.py                 # 英文文案、说明文本、动态格式化
 
     data/
       config_loader.py           # JSON 配置加载（units/skills/buffs）
@@ -123,7 +130,9 @@ TBS_Game/
       action_menu.py             # 行动菜单（Move/Attack/Skill/Wait）
       battle_log.py              # 战斗日志数据结构
       battle_log_panel.py        # 战斗日志内容渲染（分色/换行/滚动）
+      font_manager.py            # 统一字体加载与缓存
       hud.py                     # HUD 兼容接口（当前主要信息由 Unit Info Panel 提供）
+      language_shortcut.py       # F2 语言切换快捷键处理
       menu.py                    # 预留：菜单骨架
       scrollable_list.py         # 通用滚动列表状态与滚动条组件
       skill_menu.py              # 技能菜单
@@ -145,6 +154,7 @@ TBS_Game/
 - `state/` 负责玩家战斗中的输入状态流转：`Idle / Move / Attack / Skill`。
 - `battle/effects/` 负责执行技能效果；`battle/events/` 负责广播战斗事件；`entity/buff.py` 负责响应触发与持续效果。
 - `ui/scrollable_list.py` 为通用滚动行为组件，供成长界面和战斗日志等列表型 UI 复用。
+- `core/texts.py + core/i18n/*` 负责统一文本来源；`ui/font_manager.py` 负责统一字体来源，避免各界面分散加载字体或硬编码字符串。
 
 # Runtime Flow
 
@@ -168,9 +178,21 @@ Skill
 -> Buff / Trigger logic
 ```
 
+Text rendering layering:
+
+```text
+UI / Screen / Battle Log
+-> game.core.texts
+-> game.core.i18n.(zh_cn / en_us)
+-> pygame font render
+```
+
 # Constraints
 
 - 逻辑模块保持 pygame-free；pygame 主要出现在 `screens/`、`render/`、`ui/`、`main.py`。
 - `damage_calculator.py` 只负责数值计算；状态修改应由更高层协调。
 - 新功能优先扩展现有模块职责边界，不随意合并层级。
 - UI 布局语义保持 `11114 / 11114 / 22334`，并通过比例计算支持窗口实时重排。
+- 界面文本不要在各模块内随意硬编码；优先写入 `game/core/i18n/` 语言包，并通过 `game/core/texts.py` 访问。
+
+

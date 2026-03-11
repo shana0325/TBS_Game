@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import pygame
 
+from game.core import texts
 from game.screens.screen_base import ScreenBase
+from game.ui.font_manager import get_font
+from game.ui.language_shortcut import handle_language_toggle
 
 
 class LevelSelectScreen(ScreenBase):
@@ -12,9 +15,8 @@ class LevelSelectScreen(ScreenBase):
 
     def __init__(self, manager: object) -> None:
         super().__init__(manager)
-        self.title_font = pygame.font.Font(None, 56)
-        self.text_font = pygame.font.Font(None, 32)
-        # 中文注释：当前仅提供一个场景入口，后续可扩展为列表。
+        self.title_font = get_font(56)
+        self.text_font = get_font(32)
         self.selected_level = "level_1"
         self.selected_scenario = "scenario_1"
 
@@ -28,6 +30,8 @@ class LevelSelectScreen(ScreenBase):
                 continue
             if event.type == getattr(pygame, "WINDOWSIZECHANGED", -1):
                 self.manager.screen = pygame.display.set_mode((event.x, event.y), pygame.RESIZABLE)
+                continue
+            if handle_language_toggle(event):
                 continue
             if event.type != pygame.KEYDOWN:
                 continue
@@ -63,11 +67,11 @@ class LevelSelectScreen(ScreenBase):
         screen = self.manager.screen
         screen.fill((24, 30, 38))
 
-        title_surface = self.title_font.render("Level Select", True, (230, 236, 245))
-        info_surface = self.text_font.render("Scenario 1 (level_1)", True, (190, 220, 255))
-        start_surface = self.text_font.render("Enter: Deployment", True, (170, 230, 180))
-        progression_surface = self.text_font.render("P: Progression", True, (230, 210, 160))
-        back_surface = self.text_font.render("ESC: Back", True, (220, 180, 180))
+        title_surface = self.title_font.render(texts.LEVEL_SELECT_TITLE, True, (230, 236, 245))
+        info_surface = self.text_font.render(texts.LEVEL_SELECT_SCENARIO, True, (190, 220, 255))
+        start_surface = self.text_font.render(texts.LEVEL_SELECT_DEPLOYMENT, True, (170, 230, 180))
+        progression_surface = self.text_font.render(texts.LEVEL_SELECT_PROGRESSION, True, (230, 210, 160))
+        back_surface = self.text_font.render(texts.LEVEL_SELECT_BACK, True, (220, 180, 180))
 
         screen.blit(title_surface, (80, 80))
         screen.blit(info_surface, (80, 170))
@@ -76,3 +80,5 @@ class LevelSelectScreen(ScreenBase):
         screen.blit(back_surface, (80, 300))
 
         pygame.display.flip()
+
+

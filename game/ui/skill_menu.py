@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import pygame
 
+from game.core import texts
 from game.entity.skill import Skill
+from game.ui.font_manager import get_font
 
 MENU_BG_COLOR = (248, 248, 252)
 MENU_BORDER_COLOR = (84, 84, 96)
@@ -27,7 +29,6 @@ class SkillMenu:
         self._title_font: pygame.font.Font | None = None
 
     def set_skills(self, skills: list[Skill]) -> None:
-        # 中文注释：每帧由 Game 更新当前单位技能列表。
         self.skills = list(skills)
 
     def show(self) -> None:
@@ -41,11 +42,11 @@ class SkillMenu:
             return
 
         if self._font is None:
-            self._font = pygame.font.Font(None, 26)
+            self._font = get_font(26)
         if self._title_font is None:
-            self._title_font = pygame.font.Font(None, 30)
+            self._title_font = get_font(30)
 
-        title_surface = self._title_font.render("Skills", True, MENU_TITLE_COLOR)
+        title_surface = self._title_font.render(texts.SKILL_MENU_TITLE, True, MENU_TITLE_COLOR)
         screen.blit(title_surface, (self.x, self.y - 34))
 
         mouse_pos = pygame.mouse.get_pos()
@@ -55,7 +56,7 @@ class SkillMenu:
             pygame.draw.rect(screen, bg_color, rect)
             pygame.draw.rect(screen, MENU_BORDER_COLOR, rect, width=1)
 
-            label = f"{skill.name} x{skill.power:.1f}"
+            label = texts.format_skill_menu_label(skill.name, skill.power)
             text_surface = self._font.render(label, True, MENU_TEXT_COLOR)
             text_rect = text_surface.get_rect(center=rect.center)
             screen.blit(text_surface, text_rect)
@@ -70,9 +71,4 @@ class SkillMenu:
         return None
 
     def _item_rect(self, index: int) -> pygame.Rect:
-        return pygame.Rect(
-            self.x,
-            self.y + index * self.item_height,
-            self.width,
-            self.item_height,
-        )
+        return pygame.Rect(self.x, self.y + index * self.item_height, self.width, self.item_height)

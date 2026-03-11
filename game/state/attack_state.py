@@ -57,12 +57,12 @@ class AttackState(GameStateBase):
                 attacker_name = getattr(actor, "name", "Unit")
                 defender_name = getattr(target_unit, "name", "Unit")
                 game.battle_log.add(
-                    f"{attacker_name} attacks {defender_name} for {damage} damage",
+                    texts.format_battle_attack(attacker_name, defender_name, damage),
                     category="attack",
                     side="player",
                 )
                 if not target_unit.state.alive:
-                    game.battle_log.add(f"{defender_name} is defeated", category="defeat", side="enemy")
+                    game.battle_log.add(texts.format_battle_defeated(defender_name), category="defeat", side="enemy")
 
                 game.turn_manager.mark_acted(actor)
                 game.selected_unit = None
@@ -72,3 +72,4 @@ class AttackState(GameStateBase):
             return self
 
         return self
+

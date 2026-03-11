@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from game.core import texts
 from game.entity.buff import Buff
 from game.entity.skill import Skill
 
@@ -127,7 +128,7 @@ class Unit:
         side = "player" if self.state.team_id == 1 else "enemy"
         unit_name = getattr(self, "name", "Unit")
         self.battle_log.add(
-            f"{unit_name}'s {buff_name} absorbs {absorbed} damage",
+            texts.format_battle_shield_absorb(unit_name, buff_name, absorbed),
             category="shield",
             side=side,
         )
@@ -135,3 +136,5 @@ class Unit:
     def attack(self, target: Unit) -> None:
         """Placeholder for attack behavior."""
         pass
+
+

@@ -1,8 +1,8 @@
 ﻿# AGENTS.md
 
-This file describes the architecture, coding rules, and development workflow for AI agents (e.g., Codex) working on this repository.
+This file describes the architecture, coding rules, and development workflow for AI agents working on this repository.
 
-The goal is to ensure that future automated code changes remain consistent with the existing architecture and design decisions.
+The goal is to keep future automated changes aligned with the current project structure, gameplay rules, and collaboration preferences.
 
 ---
 
@@ -10,366 +10,212 @@ The goal is to ensure that future automated code changes remain consistent with 
 
 This repository contains a **grid-based turn-based strategy (TBS) prototype** implemented in **Python with pygame**.
 
-The project is designed as a **clean modular architecture** separating:
+The project is no longer just a battle sandbox. It now includes:
 
-* Game logic
-* Rendering
-* AI decision logic
-* Data models
-* App state flow
+- battle runtime systems
+- screen flow outside battle
+- data-driven unit / skill / buff config
+- persistent player roster and progression
+- pre-battle deployment and progression UI
+- event-driven combat triggers
 
-The current version is a **playable MVP prototype**.
+Current flow:
 
-Core features include:
+```text
+Main Menu
+-> Level Select
+-> Progression (optional)
+-> Deployment
+-> Battle
+-> Result
+```
 
-* Tile-based map
-* Unit system
-* Dijkstra movement range
-* Damage-based combat system
-* Turn-based control
-* Basic enemy AI
-* Pygame rendering
-* HUD display
-* GameState-driven input flow
+This is still an MVP, but it is now a **playable vertical slice prototype** rather than only a combat sandbox.
 
 ---
 
-# Architecture Overview
+# Architectural Principles
 
-The project follows a **layered architecture**.
+## 1. Keep logic and pygame separated
 
-Game rules must remain independent from UI or rendering.
+Game logic must remain independent from pygame.
 
-```
-Game Logic Layer
- ├─ Grid / Tile
- ├─ Unit System
- ├─ Movement (Dijkstra)
- ├─ Combat
- ├─ Turn Manager
- └─ Enemy AI
+Only these layers should import pygame:
 
-Application State Layer
- └─ GameState (input/action flow)
+- `game/screens/`
+- `game/render/`
+- `game/ui/`
+- `main.py`
+- `game/core/game.py` as battle runtime integration layer
 
-Rendering Layer
- ├─ Map Renderer
- └─ HUD
+Pure logic modules such as:
 
-Application Layer
- └─ main.py (game loop + input)
-```
+- `battle/`
+- `entity/`
+- `player/`
+- `levels/`
+- `data/`
 
-Important rule:
+must stay pygame-free.
 
-**Game logic must not depend on pygame.**
+## 2. Prefer extension over rewriting
 
-Only the rendering, UI, and application loop should import pygame.
+When adding features:
 
----
+- prefer new modules
+- reuse current systems
+- avoid collapsing layers
+- avoid rewriting working modules unless refactor/fix is explicitly needed
 
-# Directory Structure
+## 3. Data-driven first
 
-Directory structure and module responsibilities have been moved to `ARCHITECTURE.md`.
+The project already uses JSON for:
 
----
+- units
+- skills
+- buffs
+- player roster
 
-# Core Systems
-## Grid / Tile
+New gameplay content should prefer config-driven design before hardcoding new branches into logic.
 
-Defines the battlefield map.
+## 4. Runtime responsibilities are split
 
-Tile contains:
+Use the correct layer for the correct responsibility:
 
-* position
-* move_cost
-* defense_bonus
-* passable
-
-Grid provides:
-
-* get_tile()
-* get_neighbors()
-
----
-
-## Unit System
-
-Unit is composed of:
-
-```
-UnitConfig (static attributes)
-UnitState (runtime state)
-Unit
-```
-
-Examples:
-
-```
-UnitConfig
-  hp
-  atk
-  defense
-  move
-  range_min
-  range_max
-```
-
-```
-UnitState
-  pos
-  hp
-  acted
-  alive
-  team_id
-```
+- `screens/`: app flow outside battle
+- `core/game.py`: battle runtime orchestration
+- `state/`: player battle input state flow
+- `battle/effects/`: skill effect execution
+- `battle/events/`: combat event dispatch
+- `entity/buff.py`: buff behavior and trigger response
+- `player/`: persistent roster and progression
+- `ui/`: panel/menu drawing and input helpers
 
 ---
 
-## Movement System
+# Current Core Runtime
 
-File:
+Battle runtime layering is:
 
-```
-battle/movement/pathfinder.py
+```text
+Skill
+-> EffectSystem
+-> Effect modules
+-> CombatSystem / TurnManager
+-> EventSystem
+-> Buff / Trigger logic
 ```
 
-Algorithm:
+Important consequence:
 
-```
-Dijkstra
-```
+- not every skill effect goes through `CombatSystem`
+- `CombatSystem` is for attack/range/combat-event-related flow
+- `TurnManager` is also an event source
+- `Buff` trigger logic should react through `EventSystem`
 
-Function:
-
-```
-get_reachable_tiles(grid, start_tile, move_points)
-```
+Do not reintroduce ad-hoc trigger logic into unrelated modules if it can be routed through events cleanly.
 
 ---
 
-## Combat System
+# Project Status Summary
 
-File:
+The current codebase includes:
 
-```
-battle/combat/damage_calculator.py
-```
+- Dual battlefield map structure
+- Unit, skill, buff, and combat systems
+- Dijkstra movement and path preview
+- Turn manager with multi-unit support
+- Enemy AI turn execution
+- Deployment phase
+- Data-driven skill effects and buffs
+- Event system for combat triggers
+- Player roster and progression backend
+- Progression screen before battle
+- Shared scrollable UI behavior
+- Battle log with wrapping, color, and scrolling
 
-Damage formula:
+This means AI agents should assume the project already supports:
 
-```
-damage = max(1, attacker.config.atk - (defender.config.defense + terrain_bonus))
-```
+- multiple units per camp
+- skill selection and execution
+- buff lifecycle and trigger-style effects
+- persistent player-owned unit data
+- pre-battle preparation flow
 
-The function **must not modify unit state**.
-
----
-
-## Turn System
-
-File:
-
-```
-battle/turn/turn_manager.py
-```
-
-Responsibilities:
-
-* manage turn order
-* switch camps
-* track acted units
-
-Turn flow:
-
-```
-Player Turn
--> Enemy Turn
--> Repeat
-```
+Do not implement new features as if this were still a one-unit prototype.
 
 ---
 
-## Enemy AI
+# Files To Read First
 
-File:
+When making changes, start with these files:
 
-```
-ai/enemy_ai.py
-```
+- `ARCHITECTURE.md`
+- `README.md`
+- `docs/dev_log.md`
+- `game/core/game.py`
+- `game/screens/screen_manager.py`
 
-Function:
-
-```
-choose_enemy_action()
-```
-
-Decision priority:
-
-```
-1 attack killable target
-2 attack target
-3 move closer to player
-4 wait
-```
+Then read the local subsystem files you are changing.
 
 ---
 
-## GameState System
+# Subsystem Rules
 
-File:
+## Battle
 
-```
-core/game_state.py
-```
+Relevant directories:
 
-States:
+- `game/battle/`
+- `game/entity/`
+- `game/state/`
 
-* IDLE
-* UNIT_SELECTED
-* MOVE_MODE
-* ATTACK_MODE
-* ENEMY_TURN
+Rules:
 
-Purpose:
+- keep `damage_calculator.py` calculation-only
+- keep attack range / combat coordination in `combat_system.py`
+- keep skill behavior in `effects/`
+- keep combat triggers in `events/`
+- keep buff state/behavior in `entity/buff.py`
+- do not move rendering concerns into battle logic
 
-* make input handling explicit by state
-* keep loop flow readable and extensible
+## Screens
 
----
+Relevant directory:
 
-# Rendering Rules
+- `game/screens/`
 
-All pygame rendering must stay inside:
+Rules:
 
-```
-render/
-ui/
-main.py
-```
+- screens manage application flow outside battle
+- `BattleScreen` prepares battle inputs, then hands runtime to `Game`
+- do not duplicate battle logic inside screen classes
+- resizing behavior must remain supported
 
-Examples:
+## Progression
 
-```
-render_map()
-render_hud()
-```
+Relevant directory:
 
-Game logic modules must remain **pygame-free**.
+- `game/player/`
 
----
+Rules:
 
-# Game Loop (main.py)
+- persistent player-owned data belongs here, not in `UnitConfig`
+- battle units are assembled from templates plus roster/progression data by `SpawnSystem`
+- do not treat `player_roster.json` as a raw battle unit list; it is persistent ownership/progression data
 
-Main loop structure:
+## UI
 
-```
-handle input (state-driven)
-update game logic
-AI decisions
-render map
-render HUD
-```
+Relevant directory:
 
-FPS:
+- `game/ui/`
 
-```
-60
-```
+Rules:
 
----
-
-# Coding Guidelines
-
-AI agents must follow these rules:
-
-### 1. Do not mix logic and rendering
-
-Incorrect:
-
-```
-damage calculation inside renderer
-```
-
-Correct:
-
-```
-combat module handles damage
-renderer only draws results
-```
-
----
-
-### 2. Do not modify architecture without reason
-
-Avoid merging modules or collapsing directories.
-
-Keep the current structure.
-
----
-
-### 3. Prefer small functions
-
-Example:
-
-```
-render_map()
-_draw_grid()
-_draw_units()
-```
-
-instead of large monolithic functions.
-
----
-
-### 4. Avoid hidden side effects
-
-Functions that compute values should not modify game state.
-
-Example:
-
-```
-calculate_damage() -> return damage
-```
-
-Not:
-
-```
-calculate_damage() modifies HP
-```
-
----
-
-# Current Development Status
-
-The project currently includes:
-
-* grid system
-* unit system
-* movement (Dijkstra)
-* combat system
-* turn manager
-* enemy AI
-* pygame integration prototype
-* pygame rendering
-* HUD UI
-* GameState-based input flow
-
-This version is considered a **playable MVP prototype**.
-
----
-
-# Future Improvements
-
-Potential next steps:
-
-* movement range highlighting
-* multiple player units
-* skill system
-* path animation
-* improved enemy AI
-* map loading
-* scenario system
+- `UISystem` owns battle panel composition
+- use `ScrollableList` for new overflow-prone list UIs instead of inventing one-off scroll math
+- keep layout responsive to screen size
+- keep UI behavior separate from game rules
 
 ---
 
@@ -381,16 +227,63 @@ Potential next steps:
 
 ---
 
-# Instructions for AI Agents
+# Coding Guidelines
 
-When implementing new features:
+## 1. Preserve architecture
 
-1. Follow existing architecture
-2. Avoid introducing new dependencies
-3. Keep game logic independent from pygame
-4. Keep input flow controlled by GameState when extending main loop
-5. Maintain modular structure
+Do not merge unrelated layers just because it is faster.
+
+## 2. Small focused functions
+
+Prefer small composable functions over monolithic methods.
+
+## 3. Avoid hidden side effects
+
+If a function computes a value, it should return the value rather than silently mutating unrelated state.
+
+## 4. Keep new code consistent with current naming
+
+Use current module vocabulary:
+
+- `PlayerArmy`
+- `ProgressionSystem`
+- `SpawnSystem`
+- `EffectSystem`
+- `EventSystem`
+- `ScrollableList`
+
+Avoid introducing parallel abstractions with overlapping meaning unless there is a strong reason.
+
+## 5. Respect current UI model
+
+Current battle layout is:
+
+```text
+11114
+11114
+22334
+```
+
+Meaning:
+
+- `1` battlefield
+- `2` unit info
+- `3` action / skill area
+- `4` battle log
+
+Do not break this layout unintentionally when editing battle UI.
+
+---
+
+# When Extending Features
+
+Use these preferred extension paths:
+
+- new skill behavior -> `battle/effects/` or `entity/buff.py`
+- new combat trigger -> `battle/events/` + `entity/buff.py`
+- new persistent growth feature -> `player/`
+- new pre/post-battle app flow -> `screens/`
+- new battle panel/list UI -> `ui/`
+- new battle rendering overlay -> `render/`
 
 If unsure, extend existing systems rather than rewriting them.
-
-

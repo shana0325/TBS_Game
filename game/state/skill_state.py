@@ -65,12 +65,12 @@ class SkillState(GameStateBase):
             skill_name = game.selected_skill.name
             defender_name = getattr(target_unit, "name", "Unit")
             game.battle_log.add(
-                f"【{actor_name}】 uses 【{skill_name}】 on 【{defender_name}】 for 【{damage} damage】",
+                texts.format_skill_use(actor_name, skill_name, defender_name, damage),
                 category="attack",
                 side="player",
             )
             if not target_unit.state.alive:
-                game.battle_log.add(f"{defender_name} is defeated", category="defeat", side="enemy")
+                game.battle_log.add(texts.format_battle_defeated(defender_name), category="defeat", side="enemy")
 
             game.turn_manager.mark_acted(actor)
             game.selected_skill = None
@@ -106,3 +106,5 @@ class SkillState(GameStateBase):
         if x >= grid.enemy_offset_x:
             return x - grid.gap_width
         return x
+
+

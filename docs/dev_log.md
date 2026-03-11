@@ -143,3 +143,8 @@
 ## Stage 36 - Mouse-Driven Progression UI
 - Reworked `ProgressionScreen` to support mouse-first interaction for unit selection, stat allocation, skill learning, and skill equip.
 - Added clickable `+` stat buttons, `Learn/Equip` buttons, and `Back` button while retaining keyboard fallback.
+
+## Stage 37 - Font and i18n Infrastructure
+- Added unified font management with `assets/fonts/LXGWWenKai-Light.ttf` and `game/ui/font_manager.py`, so UI modules no longer load fonts independently.
+- Split text resources into `game/core/i18n/zh_cn.py` and `game/core/i18n/en_us.py`, kept `game/core/texts.py` as a compatibility facade, and added runtime language switching via `F2` plus `TBS_LANG`.
+- Extended text entry points with skill descriptions, buff descriptions, and status texts, then connected them to `ProgressionScreen` and `UnitInfoPanel`.

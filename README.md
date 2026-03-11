@@ -13,6 +13,8 @@ TBS_Game/
   requirements.txt
 
   assets/
+    fonts/
+      LXGWWenKai-Light.ttf
     maps/
     units/
     skills/
@@ -68,6 +70,11 @@ TBS_Game/
       game_app.py
       input_handler.py
       scene_manager.py
+      texts.py
+      i18n/
+        __init__.py
+        zh_cn.py
+        en_us.py
 
     data/
       config_loader.py
@@ -121,7 +128,9 @@ TBS_Game/
       action_menu.py
       battle_log.py
       battle_log_panel.py
+      font_manager.py
       hud.py
+      language_shortcut.py
       menu.py
       scrollable_list.py
       skill_menu.py
@@ -150,6 +159,7 @@ TBS_Game/
 - Event System: 已完成集中式战斗事件分发，用于命中、击杀、回合开始/结束等触发逻辑。
 - Progression System: 已支持 EXP、升级、属性点、技能点、学习技能、装备技能，并写回 `player_roster.json`。
 - Scrollable UI: 已新增通用 `ScrollableList` 组件，统一战斗日志与成长界面的滚动行为与滚动条样式。
+- Text / Font / i18n System: 已完成统一字体入口、统一文案入口与中英文语言包拆分，支持运行时切换语言。
 
 ## Gameplay (Current Prototype)
 
@@ -159,15 +169,18 @@ TBS_Game/
   - 鼠标点击选择角色
   - 鼠标点击属性 `+` 按钮加点
   - 鼠标选择技能并点击 `Learn / Equip`
+  - 查看当前技能说明与附带 Buff 说明
   - 滚轮滚动单位列表、属性列表、技能列表
 - 部署阶段会从全局 `PlayerArmy` 读取玩家单位，并决定出战位置。
 - 战斗阶段支持 `Move / Attack / Skill / Wait`，敌方回合自动执行 AI 行动。
+- 运行中按 `F2` 可切换中文 / 英文；启动时可通过 `TBS_LANG` 设定默认语言。
 - 右侧 Battle Log 实时显示回合、攻击、击杀、成长等关键事件，并支持滚动查看历史日志。
 - 战斗胜利后会给参战玩家单位发放固定 EXP，并自动处理升级与点数增长。
 
 ## Next Possible Improvements
 
 - 为 `ProgressionScreen` 增加技能说明、职业限制、前置技能和禁用态提示。
+- 将技能名、Buff 名本身也纳入语言包，而不只翻译说明文本。
 - 将 `SkillMenu`、`ActionMenu` 也统一迁移到 `ScrollableList` 风格。
 - 增加成长界面中的技能分类、分页和角色详情面板。
 - 增加装备系统、背包系统和更完整的存档读写。
@@ -178,3 +191,5 @@ TBS_Game/
 
 - 当前版本重点仍然是架构验证、模块边界清晰，以及 data-driven 设计可扩展性。
 - 游戏逻辑与 pygame 渲染/UI 保持分层，便于后续继续扩展成长、关卡与复杂战斗机制。
+- 文本显示当前统一经由 `game/core/texts.py` 入口分发；字体统一经由 `game/ui/font_manager.py` 管理。
+

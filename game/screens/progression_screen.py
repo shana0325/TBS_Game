@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import pygame
 
+from game.core import texts
 from game.data.config_loader import ConfigLoader
 from game.data.game_database import GameDatabase
 from game.player.player_army import PlayerArmy
 from game.screens.screen_base import ScreenBase
+from game.ui.font_manager import get_font
+from game.ui.language_shortcut import handle_language_toggle
 from game.ui.scrollable_list import ScrollableList
 
 LIST_ITEM_HEIGHT = 72
@@ -32,15 +35,14 @@ class ProgressionScreen(ScreenBase):
         self.return_screen = return_screen
         self.player_army = PlayerArmy()
         self._game_db = GameDatabase(ConfigLoader())
-        self.title_font = pygame.font.Font(None, 56)
-        self.section_font = pygame.font.Font(None, 34)
-        self.text_font = pygame.font.Font(None, 28)
-        self.small_font = pygame.font.Font(None, 24)
+        self.title_font = get_font(56)
+        self.section_font = get_font(34)
+        self.text_font = get_font(28)
+        self.small_font = get_font(24)
         self.selected_unit_index = 0
         self.selected_skill_index = 0
         self.message = ""
 
-        # 中文注释：三个面板共用同一套滚动行为，仅行高不同。
         self.unit_scroller = ScrollableList(item_height=LIST_ITEM_HEIGHT)
         self.stat_scroller = ScrollableList(item_height=STAT_LINE_HEIGHT)
         self.skill_scroller = ScrollableList(item_height=LIST_ITEM_HEIGHT)
@@ -65,6 +67,8 @@ class ProgressionScreen(ScreenBase):
                 if event.button == 1:
                     self._handle_mouse_click(event.pos)
                     continue
+            if handle_language_toggle(event):
+                continue
             if event.type != pygame.KEYDOWN:
                 continue
 
@@ -111,14 +115,13 @@ class ProgressionScreen(ScreenBase):
         screen_height = screen.get_height()
         screen.fill((22, 28, 36))
 
-        title_surface = self.title_font.render("Progression", True, (236, 240, 248))
+        title_surface = self.title_font.render(texts.PROGRESSION_TITLE, True, (236, 240, 248))
         screen.blit(title_surface, (36, 24))
 
         left_rect, center_rect, right_rect = self._get_layout_rects(screen_width, screen_height)
-
-        self._draw_panel(screen, left_rect, "Units")
-        self._draw_panel(screen, center_rect, "Stats")
-        self._draw_panel(screen, right_rect, "Skills")
+        self._draw_panel(screen, left_rect, texts.PROGRESSION_PANEL_UNITS)
+        self._draw_panel(screen, center_rect, texts.PROGRESSION_PANEL_STATS)
+        self._draw_panel(screen, right_rect, texts.PROGRESSION_PANEL_SKILLS)
 
         self._render_unit_list(screen, left_rect)
         self._render_unit_details(screen, center_rect)
@@ -161,9 +164,8 @@ class ProgressionScreen(ScreenBase):
         units = self.player_army.get_units()
         view_rect = self._get_content_rect(rect)
         start, end = self.unit_scroller.get_visible_slice(len(units), view_rect)
-        visible_units = units[start:end]
 
-        for visible_index, unit in enumerate(visible_units):
+        for visible_index, unit in enumerate(units[start:end]):
             index = start + visible_index
             item_rect = self._get_unit_item_rect(view_rect, visible_index)
             is_selected = index == self.selected_unit_index
@@ -172,12 +174,8 @@ class ProgressionScreen(ScreenBase):
             pygame.draw.rect(screen, (128, 156, 196), item_rect, width=1, border_radius=8)
 
             name_surface = self.text_font.render(unit.unit_type, True, (240, 244, 252))
-            level_surface = self.small_font.render(f"Lv.{unit.level}  EXP {unit.exp}", True, (190, 210, 232))
-            point_surface = self.small_font.render(
-                f"SP {unit.stat_points}  KP {unit.skill_points}",
-                True,
-                (210, 230, 180),
-            )
+            level_surface = self.small_font.render(texts.format_progression_level_exp(unit.level, unit.exp), True, (190, 210, 232))
+            point_surface = self.small_font.render(texts.format_progression_points(unit.stat_points, unit.skill_points), True, (210, 230, 180))
             screen.blit(name_surface, (item_rect.x + 10, item_rect.y + 8))
             screen.blit(level_surface, (item_rect.x + 10, item_rect.y + 33))
             screen.blit(point_surface, (item_rect.x + item_rect.width - 120, item_rect.y + 33))
@@ -215,10 +213,10 @@ class ProgressionScreen(ScreenBase):
         view_rect.height = max(40, learn_rect.y - view_rect.y - 12)
 
         if not skills:
-            empty_surface = self.text_font.render("No skills available", True, (210, 220, 235))
+            empty_surface = self.text_font.render(texts.PROGRESSION_NO_SKILLS, True, (210, 220, 235))
             screen.blit(empty_surface, (view_rect.x + 4, view_rect.y))
-            self._draw_button(screen, learn_rect, "Learn")
-            self._draw_button(screen, equip_rect, "Equip")
+            self._draw_button(screen, learn_rect, texts.PROGRESSION_BUTTON_LEARN)
+            self._draw_button(screen, equip_rect, texts.PROGRESSION_BUTTON_EQUIP)
             return
 
         selected_unit = self._get_selected_unit()
@@ -238,12 +236,8 @@ class ProgressionScreen(ScreenBase):
             learned = skill_id in learned_skills
             equipped = skill_id in equipped_skills
             name_surface = self.text_font.render(skill_id, True, (245, 240, 228))
-            range_surface = self.small_font.render(
-                f"Range {skill_data.get('min_range', 1)}-{skill_data.get('max_range', 1)}",
-                True,
-                (224, 210, 180),
-            )
-            state_text = "Equipped" if equipped else ("Learned" if learned else "Locked")
+            range_surface = self.small_font.render(texts.format_range(int(skill_data.get('min_range', 1)), int(skill_data.get('max_range', 1))), True, (224, 210, 180))
+            state_text = texts.PROGRESSION_SKILL_STATE_EQUIPPED if equipped else (texts.PROGRESSION_SKILL_STATE_LEARNED if learned else texts.PROGRESSION_SKILL_STATE_LOCKED)
             state_color = (170, 230, 170) if equipped else ((180, 210, 255) if learned else (220, 190, 170))
             state_surface = self.small_font.render(state_text, True, state_color)
 
@@ -252,17 +246,40 @@ class ProgressionScreen(ScreenBase):
             screen.blit(state_surface, (item_rect.right - 90, item_rect.y + 20))
 
         self.skill_scroller.draw_scrollbar(screen, view_rect, len(skills))
-        self._draw_button(screen, learn_rect, "Learn")
-        self._draw_button(screen, equip_rect, "Equip")
+        self._render_selected_skill_description(screen, rect)
+        self._draw_button(screen, learn_rect, texts.PROGRESSION_BUTTON_LEARN)
+        self._draw_button(screen, equip_rect, texts.PROGRESSION_BUTTON_EQUIP)
 
     def _render_bottom_buttons(self, screen: pygame.Surface, screen_width: int, screen_height: int) -> None:
-        back_rect = self._get_back_button_rect(screen_width, screen_height)
-        self._draw_button(screen, back_rect, "Back")
+        self._draw_button(screen, self._get_back_button_rect(screen_width, screen_height), texts.PROGRESSION_BUTTON_BACK)
 
     def _render_help(self, screen: pygame.Surface, screen_height: int) -> None:
-        help_text = "Mouse: Select Unit / Skill / +Point / Learn / Equip   Wheel: Scroll   ESC: Back"
-        help_surface = self.small_font.render(help_text, True, (190, 205, 225))
+        help_surface = self.small_font.render(texts.PROGRESSION_HELP, True, (190, 205, 225))
         screen.blit(help_surface, (36, screen_height - 64))
+
+    def _render_selected_skill_description(self, screen: pygame.Surface, rect: pygame.Rect) -> None:
+        """渲染当前选中技能的说明与附带 Buff。"""
+        skills = self._get_available_skills()
+        if not skills:
+            return
+
+        skill_id = skills[self.selected_skill_index]
+        skill_data = self._game_db.get_skill(skill_id) or {}
+        learn_rect, _ = self._get_skill_buttons_rects(rect)
+        desc_top = learn_rect.y - 88
+        if desc_top <= rect.y + 70:
+            return
+
+        title_surface = self.small_font.render(texts.PROGRESSION_SKILL_DESCRIPTION, True, (220, 225, 236))
+        screen.blit(title_surface, (rect.x + 14, desc_top))
+
+        description = texts.get_skill_description(skill_id)
+        buff_names = self._extract_buff_names(skill_data)
+        if buff_names:
+            description = f"{description}  {texts.PROGRESSION_SKILL_BUFFS}：{' / '.join(buff_names)}"
+
+        text_rect = pygame.Rect(rect.x + 14, desc_top + 24, rect.width - 28, 58)
+        self._draw_wrapped_text(screen, description, text_rect, self.small_font, (205, 214, 226))
 
     def _draw_button(self, screen: pygame.Surface, rect: pygame.Rect, label: str) -> None:
         mouse_pos = pygame.mouse.get_pos()
@@ -276,32 +293,27 @@ class ProgressionScreen(ScreenBase):
 
     def _build_stat_entries(self, unit: object) -> list[dict[str, object]]:
         entries: list[dict[str, object]] = [
-            {"kind": "text", "text": f"Name: {unit.unit_type}"},
-            {"kind": "text", "text": f"Level: {unit.level}"},
-            {"kind": "text", "text": f"EXP: {unit.exp}"},
-            {"kind": "text", "text": f"Stat Points: {unit.stat_points}"},
-            {"kind": "text", "text": f"Skill Points: {unit.skill_points}"},
+            {"kind": "text", "text": f"{texts.PROGRESSION_NAME}: {unit.unit_type}"},
+            {"kind": "text", "text": f"{texts.PROGRESSION_LEVEL}: {unit.level}"},
+            {"kind": "text", "text": f"{texts.PROGRESSION_EXP}: {unit.exp}"},
+            {"kind": "text", "text": f"{texts.PROGRESSION_STAT_POINTS}: {unit.stat_points}"},
+            {"kind": "text", "text": f"{texts.PROGRESSION_SKILL_POINTS}: {unit.skill_points}"},
             {"kind": "spacer", "text": ""},
-            {"kind": "text", "text": "Allocated Stats:"},
+            {"kind": "text", "text": texts.PROGRESSION_STATS_HEADER},
         ]
         for stat_key, label in self.STAT_OPTIONS:
             value = unit.allocated_stats.get(stat_key, 0)
-            entries.append({"kind": "stat", "text": f"{label}: +{value}", "stat_name": stat_key})
+            entries.append({"kind": "stat", "text": texts.format_stat_line(label, value), "stat_name": stat_key})
 
-        entries.extend(
-            [
-                {"kind": "spacer", "text": ""},
-                {"kind": "text", "text": f"Learned: {len(unit.learned_skills)}"},
-                {"kind": "text", "text": f"Equipped: {len(unit.equipped_skills)}"},
-            ]
-        )
+        entries.extend([
+            {"kind": "spacer", "text": ""},
+            {"kind": "text", "text": f"{texts.PROGRESSION_LEARNED_COUNT}: {len(unit.learned_skills)}"},
+            {"kind": "text", "text": f"{texts.PROGRESSION_EQUIPPED_COUNT}: {len(unit.equipped_skills)}"},
+        ])
         return entries
 
     def _handle_scroll_event(self, event: pygame.event.Event) -> None:
-        left_rect, center_rect, right_rect = self._get_layout_rects(
-            self.manager.screen.get_width(),
-            self.manager.screen.get_height(),
-        )
+        left_rect, center_rect, right_rect = self._get_layout_rects(self.manager.screen.get_width(), self.manager.screen.get_height())
         units = self.player_army.get_units()
         selected_unit = self._get_selected_unit()
         stat_entries = self._build_stat_entries(selected_unit) if selected_unit is not None else []
@@ -344,27 +356,22 @@ class ProgressionScreen(ScreenBase):
         start, end = self.unit_scroller.get_visible_slice(len(units), view_rect)
         for visible_index in range(end - start):
             item_rect = self._get_unit_item_rect(view_rect, visible_index)
-            if not item_rect.collidepoint(pos):
-                continue
-            self.selected_unit_index = start + visible_index
-            self.message = ""
-            return True
+            if item_rect.collidepoint(pos):
+                self.selected_unit_index = start + visible_index
+                self.message = ""
+                return True
         return False
 
     def _handle_stat_click(self, pos: tuple[int, int], center_rect: pygame.Rect) -> bool:
         unit = self._get_selected_unit()
         if unit is None:
             return False
-
         entries = self._build_stat_entries(unit)
         view_rect = self._get_content_rect(center_rect)
         start, end = self.stat_scroller.get_visible_slice(len(entries), view_rect)
         for draw_index, entry in enumerate(entries[start:end]):
             stat_name = entry.get("stat_name")
-            if not isinstance(stat_name, str):
-                continue
-            button_rect = self._get_stat_button_rect(view_rect, draw_index)
-            if button_rect.collidepoint(pos):
+            if isinstance(stat_name, str) and self._get_stat_button_rect(view_rect, draw_index).collidepoint(pos):
                 self._apply_stat_point(stat_name)
                 return True
         return False
@@ -377,11 +384,10 @@ class ProgressionScreen(ScreenBase):
         start, end = self.skill_scroller.get_visible_slice(len(skills), view_rect)
         for visible_index in range(end - start):
             item_rect = self._get_skill_item_rect(view_rect, visible_index)
-            if not item_rect.collidepoint(pos):
-                continue
-            self.selected_skill_index = start + visible_index
-            self.message = ""
-            return True
+            if item_rect.collidepoint(pos):
+                self.selected_skill_index = start + visible_index
+                self.message = ""
+                return True
         return False
 
     def _get_unit_item_rect(self, view_rect: pygame.Rect, visible_index: int) -> pygame.Rect:
@@ -402,12 +408,47 @@ class ProgressionScreen(ScreenBase):
         self.unit_scroller.ensure_visible(self.selected_unit_index, len(units), self._get_content_rect(left_rect))
         return units[self.selected_unit_index]
 
+    def _extract_buff_names(self, skill_data: dict[str, object]) -> list[str]:
+        """提取技能效果中引用的 Buff 文案。"""
+        names: list[str] = []
+        for effect in skill_data.get("effects", []):
+            if not isinstance(effect, dict) or effect.get("type") != "buff":
+                continue
+            buff_id = str(effect.get("buff", effect.get("name", "")))
+            if not buff_id:
+                continue
+            names.append(texts.get_buff_description(buff_id))
+        return names
+
+    def _draw_wrapped_text(
+        self,
+        screen: pygame.Surface,
+        text: str,
+        rect: pygame.Rect,
+        font: pygame.font.Font,
+        color: tuple[int, int, int],
+    ) -> None:
+        """按像素宽度换行渲染短说明。"""
+        line = ""
+        y = rect.y
+        for ch in text:
+            candidate = line + ch
+            if font.size(candidate)[0] <= rect.width:
+                line = candidate
+                continue
+            if y + font.get_height() > rect.bottom:
+                break
+            screen.blit(font.render(line, True, color), (rect.x, y))
+            y += font.get_height() + 2
+            line = ch
+        if line and y + font.get_height() <= rect.bottom:
+            screen.blit(font.render(line, True, color), (rect.x, y))
+
     def _get_available_skills(self) -> list[str]:
         skill_ids = sorted(self._game_db.skills.keys())
         if not skill_ids:
             self.selected_skill_index = 0
             return []
-
         self.selected_skill_index = max(0, min(self.selected_skill_index, len(skill_ids) - 1))
         _, _, right_rect = self._get_layout_rects(self.manager.screen.get_width(), self.manager.screen.get_height())
         skill_view_rect = self._get_content_rect(right_rect)
@@ -442,9 +483,9 @@ class ProgressionScreen(ScreenBase):
         if unit is None:
             return
         if self.player_army.spend_stat_point(unit.unit_id, stat_name):
-            self.message = f"{unit.unit_type} gains +1 {stat_name}."
+            self.message = texts.format_progression_message_gain(unit.unit_type, stat_name)
         else:
-            self.message = f"{unit.unit_type} has no stat points."
+            self.message = texts.format_progression_message_no_stat_points(unit.unit_type)
 
     def _learn_selected_skill(self) -> None:
         unit = self._get_selected_unit()
@@ -453,9 +494,9 @@ class ProgressionScreen(ScreenBase):
             return
         skill_id = skills[self.selected_skill_index]
         if self.player_army.learn_skill(unit.unit_id, skill_id):
-            self.message = f"{unit.unit_type} learned {skill_id}."
+            self.message = texts.format_progression_message_learn(unit.unit_type, skill_id)
         else:
-            self.message = f"Cannot learn {skill_id}."
+            self.message = texts.format_progression_message_cannot_learn(skill_id)
 
     def _equip_selected_skill(self) -> None:
         unit = self._get_selected_unit()
@@ -464,15 +505,17 @@ class ProgressionScreen(ScreenBase):
             return
         skill_id = skills[self.selected_skill_index]
         if self.player_army.equip_skill(unit.unit_id, skill_id):
-            self.message = f"{unit.unit_type} equipped {skill_id}."
+            self.message = texts.format_progression_message_equip(unit.unit_type, skill_id)
         else:
-            self.message = f"Cannot equip {skill_id}."
+            self.message = texts.format_progression_message_cannot_equip(skill_id)
 
     def _return_to_previous_screen(self) -> None:
         if self.return_screen is not None:
             self.manager.switch_to(self.return_screen)
             return
-
         from game.screens.level_select_screen import LevelSelectScreen
-
         self.manager.switch_to(LevelSelectScreen(self.manager))
+
+
+
+

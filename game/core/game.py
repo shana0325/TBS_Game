@@ -10,6 +10,7 @@ from game.battle.combat.highlight_system import HighlightSystem
 from game.battle.movement.grid import DualGrid
 from game.battle.turn.turn_manager import ENEMY, PLAYER, TurnManager
 from game.controllers.enemy_controller import EnemyController
+from game.core import texts
 from game.core.game_state import GameState
 from game.entity.skill import Skill
 from game.entity.unit import Unit
@@ -22,12 +23,13 @@ from game.render.map_renderer import TILE_SIZE, render_map
 from game.render.path_renderer import draw_path_preview
 from game.state.idle_state import IdleState
 from game.ui.action_menu import ActionMenu
+from game.ui.language_shortcut import handle_language_toggle
 from game.ui.battle_log import BattleLog
 from game.ui.skill_menu import SkillMenu
 from game.ui.ui_system import UISystem
 
 BACKGROUND_COLOR = (245, 245, 245)
-WINDOW_TITLE = "TBS Game - Dual Battlefield"
+WINDOW_TITLE = texts.WINDOW_TITLE
 
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
@@ -112,7 +114,7 @@ class Game:
         self.window_height = max(base_height, min_height)
 
         self.screen = pygame.display.set_mode((self.window_width, self.window_height), pygame.RESIZABLE)
-        pygame.display.set_caption(WINDOW_TITLE)
+        pygame.display.set_caption(texts.WINDOW_TITLE)
 
         self.game_state = GameState.IDLE
         self.current_state = IdleState()
@@ -260,6 +262,8 @@ class Game:
         self.events = pygame.event.get() if events is None else events
         for event in self.events:
             self.ui_system.handle_event(event)
+            if handle_language_toggle(event):
+                continue
             if event.type == pygame.QUIT:
                 self.running = False
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -304,7 +308,7 @@ class Game:
 
         if self.turn_manager.is_turn_finished():
             self.turn_manager.next_turn()
-            next_turn_text = "Player Turn" if self.turn_manager.current_camp == PLAYER else "Enemy Turn"
+            next_turn_text = texts.TURN_PLAYER if self.turn_manager.current_camp == PLAYER else texts.TURN_ENEMY
             self.battle_log.add(next_turn_text, category="turn", side="neutral")
 
     def render(self) -> None:
@@ -414,3 +418,7 @@ class Game:
         if tile is None:
             return None
         return (grid_x, grid_y)
+
+
+
+

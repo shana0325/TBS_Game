@@ -5,6 +5,7 @@ from __future__ import annotations
 import pygame
 
 from game.ui.battle_log import BattleLog
+from game.ui.font_manager import get_font
 from game.ui.scrollable_list import ScrollableList
 
 
@@ -23,7 +24,7 @@ class BattleLogPanel:
     ) -> None:
         self.screen = screen
         self.battle_log = battle_log
-        self.font = pygame.font.Font(None, font_size)
+        self.font = get_font(font_size)
         self.text_color = text_color
         self.player_attack_color = player_attack_color
         self.enemy_attack_color = enemy_attack_color

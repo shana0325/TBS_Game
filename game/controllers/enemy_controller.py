@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from game.ai.enemy_ai import choose_enemy_action
+from game.core import texts
 from game.entity.unit import Unit
 
 
@@ -50,23 +51,23 @@ class EnemyController:
 
             defender_name = getattr(target, "name", "Unit")
             self._log(
-                f"{actor_name} attacks {defender_name} for {damage} damage",
+                texts.format_battle_attack(actor_name, defender_name, damage),
                 category="attack",
                 side="enemy",
             )
             if not target.state.alive:
-                self._log(f"{defender_name} is defeated", category="defeat", side="player")
+                self._log(texts.format_battle_defeated(defender_name), category="defeat", side="player")
 
         elif action == "move" and target is not None:
             from_pos = actor.state.pos
             actor.move_to(target.x, target.y)
             self._log(
-                f"{actor_name} moves {from_pos} -> {(target.x, target.y)}",
+                texts.format_battle_move(actor_name, from_pos, (target.x, target.y)),
                 category="move",
                 side="enemy",
             )
         else:
-            self._log(f"{actor_name} waits", category="wait", side="enemy")
+            self._log(texts.format_battle_wait(actor_name), category="wait", side="enemy")
 
         self.turn_manager.mark_acted(actor)
 
@@ -77,3 +78,5 @@ class EnemyController:
         add_fn = getattr(self.battle_log, "add", None)
         if callable(add_fn):
             add_fn(message, category=category, side=side)
+
+

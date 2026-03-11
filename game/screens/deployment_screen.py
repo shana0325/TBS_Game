@@ -5,6 +5,7 @@ from __future__ import annotations
 import pygame
 
 from game.battle.movement.grid import DualGrid
+from game.core import texts
 from game.core.game import BOTTOM_UI_RATIO, ENEMY_TEAM_ID, PLAYER_TEAM_ID
 from game.levels.level.level_loader import load_level
 from game.levels.scenario.scenario_loader import load_scenario
@@ -12,6 +13,8 @@ from game.levels.systems.spawn_system import SpawnSystem
 from game.player.player_army import PlayerArmy
 from game.render.map_renderer import TILE_SIZE, render_map
 from game.screens.screen_base import ScreenBase
+from game.ui.font_manager import get_font
+from game.ui.language_shortcut import handle_language_toggle
 
 # 中文注释：部署区高亮颜色。
 DEPLOYMENT_BORDER_COLOR = (80, 150, 255)
@@ -65,11 +68,10 @@ class DeploymentScreen(ScreenBase):
         self.map_pixel_width = self.grid.width * self.tile_size
         self.map_pixel_height = self.grid.height * self.tile_size
 
-        # 字体设置
-        FONT_PATH = r"C:\Windows\Fonts\msyh.ttc"
-        self.title_font = pygame.font.Font(FONT_PATH, 42)
-        self.text_font = pygame.font.Font(FONT_PATH, 28)
-        self.small_font = pygame.font.Font(FONT_PATH, 24)
+        # 中文注释：所有界面统一使用字体管理器，避免分散写死系统字体路径。
+        self.title_font = get_font(42)
+        self.text_font = get_font(28)
+        self.small_font = get_font(24)
 
         self.slot_rects: list[pygame.Rect] = []
         self.start_button_rect = pygame.Rect(0, 0, 0, 0)
@@ -122,6 +124,8 @@ class DeploymentScreen(ScreenBase):
                 self._resize_window(event.x, event.y)
                 continue
 
+            if handle_language_toggle(event):
+                continue
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 from game.screens.level_select_screen import LevelSelectScreen
 
@@ -221,7 +225,7 @@ class DeploymentScreen(ScreenBase):
         pygame.draw.rect(screen, (158, 170, 186), self.roster_panel_rect, width=1)
         pygame.draw.rect(screen, (158, 170, 186), self.action_panel_rect, width=1)
 
-        title = self.title_font.render("Deployment", True, (30, 40, 55))
+        title = self.title_font.render(texts.DEPLOYMENT_TITLE, True, (30, 40, 55))
         screen.blit(title, (self.roster_panel_rect.x + 16, self.roster_panel_rect.y + 12))
 
         self.slot_rects = []
@@ -240,13 +244,13 @@ class DeploymentScreen(ScreenBase):
             line = self.text_font.render(f"{idx + 1}. {unit_type}{suffix}", True, (235, 240, 250))
             screen.blit(line, (slot_rect.x + 10, slot_rect.y + 6))
 
-        tips = self.small_font.render("点击左侧名单选择单位，再点击蓝色部署格放置", True, (48, 60, 78))
+        tips = self.small_font.render(texts.DEPLOYMENT_TIPS, True, (48, 60, 78))
         screen.blit(tips, (self.roster_panel_rect.x + 16, self.roster_panel_rect.bottom - 34))
 
         can_start = self._is_all_deployed()
         btn_bg = START_BTN_BG if can_start else START_BTN_DISABLED_BG
         pygame.draw.rect(screen, btn_bg, self.start_button_rect)
-        btn_text = self.text_font.render("Start Battle", True, (245, 250, 245))
+        btn_text = self.text_font.render(texts.DEPLOYMENT_START, True, (245, 250, 245))
         screen.blit(
             btn_text,
             (
@@ -255,7 +259,7 @@ class DeploymentScreen(ScreenBase):
             ),
         )
 
-        state_text = "已全部部署，可开始战斗" if can_start else "请先完成全部单位部署"
+        state_text = texts.DEPLOYMENT_READY if can_start else texts.DEPLOYMENT_NOT_READY
         state_surface = self.small_font.render(state_text, True, (55, 70, 88))
         screen.blit(state_surface, (self.action_panel_rect.x + 24, self.action_panel_rect.y + 92))
 
@@ -311,5 +315,9 @@ class DeploymentScreen(ScreenBase):
         if tile is None:
             return None
         return (grid_x, grid_y)
+
+
+
+
 
 
