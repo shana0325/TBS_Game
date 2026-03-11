@@ -53,7 +53,7 @@ class Unit:
         # 中文注释：buffs 保存单位当前挂载的增益/减益状态。
         self.buffs: list[Buff] = list(buffs) if buffs is not None else []
 
-        # 中文注释：逻辑层上下文引用，供 Buff/反击/召唤日志等系统读取。
+        # 中文注释：逻辑层上下文引用，供 Buff/召唤日志等系统读取。
         self.battle_log: object | None = None
         self.battle_context: object | None = None
         self.summon_duration: int | None = None
@@ -97,11 +97,11 @@ class Unit:
         """Update the unit's position."""
         self.state.pos = (x, y)
 
-    def take_damage(self, amount: int, attacker: Unit | None = None, allow_counter: bool = True) -> None:
-        """Apply incoming damage and update alive flag (with shield & counter)."""
+    def take_damage(self, amount: int) -> int:
+        """Apply incoming damage with shield absorption and return actual HP loss."""
         damage_left = max(0, amount)
         if damage_left <= 0:
-            return
+            return 0
 
         # 中文注释：护盾先吸收伤害，剩余值再扣血。
         for buff in self.buffs:
@@ -118,60 +118,7 @@ class Unit:
         before_hp = self.state.hp
         self.state.hp = max(0, self.state.hp - damage_left)
         self.state.alive = self.state.hp > 0
-        actual_damage = before_hp - self.state.hp
-
-        self._dispatch_damage_events(attacker=attacker, actual_damage=actual_damage)
-
-        # 中文注释：反击只触发一次，避免递归连锁反击。
-        if (
-            allow_counter
-            and attacker is not None
-            and actual_damage > 0
-            and self.state.alive
-            and attacker.state.alive
-            and self.has_counter()
-        ):
-            self._do_counter_attack(attacker)
-
-    def _dispatch_damage_events(self, attacker: Unit | None, actual_damage: int) -> None:
-        if actual_damage <= 0 or attacker is None:
-            return
-
-        game = self.battle_context
-        if game is None:
-            return
-
-        combat_system = getattr(game, "combat_system", None)
-        if combat_system is None:
-            return
-
-        context = {
-            "attacker": attacker,
-            "target": self,
-            "damage": actual_damage,
-            "game": game,
-        }
-        combat_system.dispatch_event("on_hit", context)
-
-        if not self.state.alive:
-            combat_system.dispatch_event("on_kill", context)
-
-    def _do_counter_attack(self, attacker: Unit) -> None:
-        # 中文注释：反击使用普通攻击伤害公式，且禁止再次触发反击。
-        from game.battle.combat.damage_calculator import calculate_damage
-
-        counter_damage = calculate_damage(self, attacker, terrain_bonus=0)
-        attacker.take_damage(counter_damage, attacker=self, allow_counter=False)
-
-        if self.battle_log is not None:
-            actor_name = getattr(self, "name", "Unit")
-            target_name = getattr(attacker, "name", "Unit")
-            side = "player" if self.state.team_id == 1 else "enemy"
-            self.battle_log.add(
-                f"{actor_name} counter-attacks {target_name} for {counter_damage} damage",
-                category="attack",
-                side=side,
-            )
+        return before_hp - self.state.hp
 
     def _log_shield_absorb(self, buff_name: str, absorbed: int) -> None:
         if self.battle_log is None:

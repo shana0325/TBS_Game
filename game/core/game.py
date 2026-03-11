@@ -5,6 +5,7 @@ from __future__ import annotations
 import pygame
 
 from game.battle.combat.combat_system import CombatSystem
+from game.battle.events.event_system import EventSystem
 from game.battle.combat.highlight_system import HighlightSystem
 from game.battle.movement.grid import DualGrid
 from game.battle.turn.turn_manager import ENEMY, PLAYER, TurnManager
@@ -96,6 +97,7 @@ class Game:
             unit.set_battle_context(self)
 
         self.turn_manager.set_game_context(self)
+        self.event_system = EventSystem(self)
 
         self.tile_size = TILE_SIZE
         self.map_pixel_width = self.grid.width * self.tile_size
@@ -125,7 +127,7 @@ class Game:
         self.action_menu = ActionMenu()
         self.skill_menu = SkillMenu(x=0, y=0)
 
-        self.combat_system = CombatSystem(self.grid)
+        self.combat_system = CombatSystem(self.grid, event_system=self.event_system)
         self.enemy_controller = EnemyController(
             grid=self.grid,
             units=self.units,
@@ -426,6 +428,8 @@ class Game:
         if tile is None:
             return None
         return (grid_x, grid_y)
+
+
 
 
 

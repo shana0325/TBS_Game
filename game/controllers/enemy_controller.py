@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from game.ai.enemy_ai import choose_enemy_action
-from game.battle.combat.damage_calculator import calculate_damage
 from game.entity.unit import Unit
 
 
@@ -40,16 +39,14 @@ class EnemyController:
 
         action, target = choose_enemy_action(actor, self.grid, self.units)
         if action == "attack" and isinstance(target, Unit):
-            damage = calculate_damage(actor, target, terrain_bonus=0)
-
             game = actor.battle_context
             if game is not None and getattr(game, "combat_system", None) is not None:
-                game.combat_system.dispatch_event(
-                    "on_attack",
-                    {"attacker": actor, "target": target, "damage": damage, "game": game},
-                )
+                damage = game.combat_system.resolve_attack(actor, target)
+            else:
+                from game.battle.combat.damage_calculator import calculate_damage
 
-            target.take_damage(damage, attacker=actor)
+                raw_damage = calculate_damage(actor, target, terrain_bonus=0)
+                damage = target.take_damage(raw_damage)
 
             defender_name = getattr(target, "name", "Unit")
             self._log(

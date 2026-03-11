@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pygame
 
-from game.battle.combat.damage_calculator import calculate_damage
 from game.core.game_state import GameState
 from game.state.game_state_base import GameStateBase
 
@@ -52,12 +51,7 @@ class AttackState(GameStateBase):
                 return self
 
             if game.combat_system.is_in_attack_range(actor, target_unit):
-                damage = calculate_damage(actor, target_unit, terrain_bonus=0)
-                game.combat_system.dispatch_event(
-                    "on_attack",
-                    {"attacker": actor, "target": target_unit, "damage": damage, "game": game},
-                )
-                target_unit.take_damage(damage, attacker=actor)
+                damage = game.combat_system.resolve_attack(actor, target_unit)
 
                 # 中文注释：记录玩家攻击事件与可能的击杀结果。
                 attacker_name = getattr(actor, "name", "Unit")

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from game.battle.events.battle_event import BattleEvent
+from game.battle.events.event_types import ON_TURN_END, ON_TURN_START
 from game.entity.unit import Unit
 
 PLAYER = "player"
@@ -79,7 +81,7 @@ class TurnManager:
             for buff in list(unit.buffs):
                 buff.on_turn_start(unit, self.game_context)
 
-            self._dispatch_turn_event("on_turn_start", unit)
+            self._dispatch_turn_event(ON_TURN_START, unit)
 
     def _process_turn_end(self, team_id: int) -> None:
         # 中文注释：调用 Buff 的回合结束钩子并清理到期 Buff/召唤单位。
@@ -90,7 +92,7 @@ class TurnManager:
             for buff in list(unit.buffs):
                 buff.on_turn_end(unit, self.game_context)
 
-            self._dispatch_turn_event("on_turn_end", unit)
+            self._dispatch_turn_event(ON_TURN_END, unit)
 
             unit.buffs = [buff for buff in unit.buffs if buff.duration != 0]
 
@@ -150,18 +152,17 @@ class TurnManager:
         if game is None:
             return
 
-        combat_system = getattr(game, "combat_system", None)
-        if combat_system is None:
+        event_system = getattr(game, "event_system", None)
+        if event_system is None:
             return
 
-        combat_system.dispatch_event(
-            event_type,
-            {
-                "attacker": unit,
-                "target": unit,
-                "damage": 0,
-                "game": game,
-            },
+        event_system.dispatch(
+            BattleEvent(
+                event_type=event_type,
+                source=unit,
+                target=unit,
+                data={"damage": 0, "game": game},
+            )
         )
 
     def _log_summon_expire(self, unit: Unit) -> None:

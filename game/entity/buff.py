@@ -5,7 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from game.battle.events.event_types import ON_ATTACK, ON_HIT, ON_KILL
+
 if TYPE_CHECKING:
+    from game.battle.events.battle_event import BattleEvent
     from game.entity.unit import Unit
 
 
@@ -41,20 +44,24 @@ class Buff:
         if self.duration > 0:
             self.duration -= 1
 
-    def on_event(self, event_type: str, owner: Unit, context: dict[str, object], game: object | None) -> None:
-        """事件触发：按 trigger 配置执行逻辑（如 lifesteal）。"""
-        if self.trigger != event_type:
+    def on_trigger(self, unit: Unit, event: BattleEvent, game: object | None) -> None:
+        """事件触发：按 trigger 配置执行逻辑（如 counter/lifesteal）。"""
+        if self.trigger != event.event_type:
             return
 
-        # 中文注释：攻击相关触发仅对事件攻击者自身生效。
-        if event_type in ("on_attack", "on_hit", "on_kill") and context.get("attacker") is not owner:
+        if self.counter:
+            self._handle_counter_trigger(unit, event, game)
+            return
+
+        # 中文注释：攻击相关触发默认只对事件攻击者自身生效。
+        if event.event_type in (ON_ATTACK, ON_HIT, ON_KILL) and event.source is not unit:
             return
 
         # 中文注释：当前最小触发实现：heal_percent，用于 on_hit/on_kill 等吸血类效果。
-        if self.heal_percent <= 0 or not owner.state.alive:
+        if self.heal_percent <= 0 or not unit.state.alive:
             return
 
-        damage = int(context.get("damage", 0))
+        damage = int(event.data.get("damage", 0))
         if damage <= 0:
             return
 
@@ -62,18 +69,29 @@ class Buff:
         if heal_value <= 0:
             return
 
-        before_hp = owner.state.hp
-        owner.state.hp = min(owner.config.hp, owner.state.hp + heal_value)
-        actual_heal = owner.state.hp - before_hp
+        before_hp = unit.state.hp
+        unit.state.hp = min(unit.config.hp, unit.state.hp + heal_value)
+        actual_heal = unit.state.hp - before_hp
         if actual_heal <= 0:
             return
 
         self._log(
-            unit=owner,
+            unit=unit,
             game=game,
-            message=f"{getattr(owner, 'name', 'Unit')} heals {actual_heal} from trigger {self.name}",
+            message=f"{getattr(unit, 'name', 'Unit')} heals {actual_heal} from trigger {self.name}",
             category="trigger",
         )
+
+    def on_event(self, event_type: str, owner: Unit, context: dict[str, object], game: object | None) -> None:
+        """Backward-compatible wrapper for old event dispatch calls."""
+        from game.battle.events.battle_event import BattleEvent
+
+        source = context.get("attacker")
+        target = context.get("target")
+        data = dict(context)
+        data.pop("attacker", None)
+        data.pop("target", None)
+        self.on_trigger(owner, BattleEvent(event_type=event_type, source=source, target=target, data=data), game)
 
     def absorb_damage(self, incoming_damage: int) -> int:
         """使用护盾吸收伤害，返回本次吸收值。"""
@@ -93,12 +111,47 @@ class Buff:
             is_aura_instance=True,
         )
 
+    def _handle_counter_trigger(self, unit: Unit, event: BattleEvent, game: object | None) -> None:
+        # 中文注释：Counter 只在单位作为受击目标时触发，且反击不再连锁触发反击。
+        if not unit.state.alive:
+            return
+        if event.event_type != ON_HIT:
+            return
+        if event.target is not unit:
+            return
+        if bool(event.data.get("is_counter", False)):
+            return
+
+        attacker = event.source
+        if attacker is None or getattr(attacker, "state", None) is None:
+            return
+        if not attacker.state.alive:
+            return
+
+        if game is None:
+            game = unit.battle_context
+        if game is None:
+            return
+
+        combat_system = getattr(game, "combat_system", None)
+        if combat_system is None:
+            return
+        if not combat_system.is_in_attack_range(unit, attacker):
+            return
+
+        counter_damage = combat_system.resolve_attack(unit, attacker, counter=True)
+        self._log(
+            unit=unit,
+            game=game,
+            message=f"{getattr(unit, 'name', 'Unit')} counter-attacks {getattr(attacker, 'name', 'Unit')} for {counter_damage} damage",
+            category="attack",
+        )
+
     def _apply_tick(self, unit: Unit, game: object | None) -> None:
         # 中文注释：先处理持续伤害，再处理持续治疗；两者可并存。
         if self.tick_damage > 0 and unit.state.alive:
             before_hp = unit.state.hp
-            unit.take_damage(self.tick_damage)
-            actual_damage = before_hp - unit.state.hp
+            actual_damage = unit.take_damage(self.tick_damage)
             if actual_damage > 0:
                 self._log(
                     unit=unit,

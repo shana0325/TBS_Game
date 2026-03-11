@@ -1,15 +1,20 @@
-﻿"""战斗判定模块：负责攻击距离与攻击范围判断，以及战斗事件分发。"""
+﻿"""战斗判定模块：负责攻击距离、攻击范围与战斗事件分发。"""
 
 from __future__ import annotations
 
+from game.battle.combat.damage_calculator import calculate_damage
+from game.battle.events.battle_event import BattleEvent
+from game.battle.events.event_system import EventSystem
+from game.battle.events.event_types import ON_ATTACK, ON_HIT, ON_KILL
 from game.entity.unit import Unit
 
 
 class CombatSystem:
     """Centralized combat range checks and event dispatch for battle interactions."""
 
-    def __init__(self, grid: object) -> None:
+    def __init__(self, grid: object, event_system: EventSystem | None = None) -> None:
         self.grid = grid
+        self.event_system = event_system
 
     def is_in_attack_range(self, attacker: Unit, defender: Unit) -> bool:
         """Check whether attacker can attack defender at current positions."""
@@ -29,21 +34,60 @@ class CombatSystem:
         distance = abs(ax - tx) + abs(ay - ty)
         return attacker.config.range_min <= distance <= attacker.config.range_max
 
-    def dispatch_event(self, event_type: str, context: dict[str, object]) -> None:
-        """Dispatch combat events to all buff listeners."""
-        game = context.get("game")
-        if game is None:
-            attacker = context.get("attacker")
-            game = getattr(attacker, "battle_context", None)
-        if game is None:
-            return
+    def resolve_attack(self, attacker: Unit, defender: Unit, *, counter: bool = False) -> int:
+        """Resolve one normal attack and dispatch all related combat events."""
+        damage = calculate_damage(attacker, defender, terrain_bonus=0)
 
-        units = getattr(game, "units", [])
-        for unit in units:
-            if not isinstance(unit, Unit):
-                continue
-            for buff in list(unit.buffs):
-                buff.on_event(event_type, owner=unit, context=context, game=game)
+        event_data = {
+            "damage": damage,
+            "game": attacker.battle_context,
+            "is_counter": counter,
+        }
+        self.dispatch(BattleEvent(event_type=ON_ATTACK, source=attacker, target=defender, data=event_data))
+
+        actual_damage = defender.take_damage(damage)
+        hit_event = BattleEvent(
+            event_type=ON_HIT,
+            source=attacker,
+            target=defender,
+            data={
+                "damage": actual_damage,
+                "game": attacker.battle_context,
+                "is_counter": counter,
+            },
+        )
+        self.dispatch(hit_event)
+
+        if defender.is_dead():
+            kill_event = BattleEvent(
+                event_type=ON_KILL,
+                source=attacker,
+                target=defender,
+                data={
+                    "damage": actual_damage,
+                    "game": attacker.battle_context,
+                    "is_counter": counter,
+                },
+            )
+            self.dispatch(kill_event)
+
+        return actual_damage
+
+    def dispatch(self, event: BattleEvent) -> None:
+        """Dispatch one battle event via EventSystem."""
+        if self.event_system is None:
+            return
+        self.event_system.dispatch(event)
+
+    def dispatch_event(self, event_type: str, context: dict[str, object]) -> None:
+        """Compatibility wrapper to dispatch typed events from existing callsites."""
+        source = context.get("attacker")
+        target = context.get("target")
+        data = dict(context)
+        data.pop("attacker", None)
+        data.pop("target", None)
+
+        self.dispatch(BattleEvent(event_type=event_type, source=source, target=target, data=data))
 
     def _cross_grid_distance(self, attacker_x: int, target_x: int) -> int:
         # 中文注释：将两侧战场压缩为逻辑列（0..7）后计算列差。

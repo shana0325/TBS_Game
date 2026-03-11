@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from game.battle.combat.damage_calculator import calculate_damage
-
 if TYPE_CHECKING:
     from game.entity.unit import Unit
 
@@ -15,16 +13,38 @@ class DamageEffect:
 
     @staticmethod
     def apply(effect_data: dict[str, object], user: Unit, target: Unit) -> int:
-        # 中文注释：damage 支持 power 倍率，默认 1.0。
+        # 中文注释：统一由 CombatSystem 处理普通伤害、事件和触发链。
         power = float(effect_data.get("power", 1.0))
-        damage = calculate_damage(user, target, terrain_bonus=0, skill_power=power)
+        if power != 1.0:
+            from game.battle.combat.damage_calculator import calculate_damage
+
+            return_value = calculate_damage(user, target, terrain_bonus=0, skill_power=power)
+            game = user.battle_context
+            if game is None or getattr(game, "combat_system", None) is None:
+                target.take_damage(return_value)
+                return return_value
+
+            game.combat_system.dispatch_event(
+                "on_attack",
+                {"attacker": user, "target": target, "damage": return_value, "game": game},
+            )
+            actual_damage = target.take_damage(return_value)
+            game.combat_system.dispatch_event(
+                "on_hit",
+                {"attacker": user, "target": target, "damage": actual_damage, "game": game},
+            )
+            if target.is_dead():
+                game.combat_system.dispatch_event(
+                    "on_kill",
+                    {"attacker": user, "target": target, "damage": actual_damage, "game": game},
+                )
+            return actual_damage
 
         game = user.battle_context
         if game is not None and getattr(game, "combat_system", None) is not None:
-            game.combat_system.dispatch_event(
-                "on_attack",
-                {"attacker": user, "target": target, "damage": damage, "game": game},
-            )
+            return game.combat_system.resolve_attack(user, target)
 
-        target.take_damage(damage, attacker=user)
-        return damage
+        from game.battle.combat.damage_calculator import calculate_damage
+
+        damage = calculate_damage(user, target, terrain_bonus=0, skill_power=power)
+        return target.take_damage(damage)
