@@ -5,6 +5,7 @@ from __future__ import annotations
 import pygame
 
 from game.ui.battle_log import BattleLog
+from game.ui.scrollable_list import ScrollableList
 
 
 class BattleLogPanel:
@@ -27,31 +28,52 @@ class BattleLogPanel:
         self.player_attack_color = player_attack_color
         self.enemy_attack_color = enemy_attack_color
         self.line_height = line_height
+        # 中文注释：战斗日志以底部为锚点，滚轮向上查看更旧日志。
+        self.scroller = ScrollableList(
+            item_height=self.line_height,
+            wheel_step=3,
+            anchor="bottom",
+            track_color=(208, 214, 224),
+            thumb_color=(124, 138, 162),
+            scrollbar_width=6,
+            scrollbar_gap=4,
+        )
+        self._last_rect = pygame.Rect(0, 0, 0, 0)
+
+    def handle_event(self, event: pygame.event.Event) -> None:
+        """处理日志面板滚轮输入。"""
+        if self._last_rect.width <= 0 or self._last_rect.height <= 0:
+            return
+        wrapped_rows = self._build_wrapped_rows(max(20, self._last_rect.width - 24))
+        self.scroller.handle_event(event, self._last_rect, len(wrapped_rows))
 
     def render(self, rect: pygame.Rect) -> None:
         """在给定区域内渲染最近日志。"""
-        # 中文注释：BattleLogPanel 只绘制内容，不负责布局计算。
-        max_rows = max(1, rect.height // self.line_height)
+        self._last_rect = rect.copy()
+        wrapped_rows = self._build_wrapped_rows(max(20, rect.width - 24))
+        start_index, end_index = self.scroller.get_visible_slice(len(wrapped_rows), rect)
+        rows_to_draw = wrapped_rows[start_index:end_index]
 
-        # 中文注释：移动日志保留在数据层，但不显示在战斗 UI。
-        raw_entries = self.battle_log.get_recent_entries(200)
-        visible_entries = [entry for entry in raw_entries if entry.get("category") != "move"]
-
-        wrapped_rows: list[tuple[str, tuple[int, int, int]]] = []
-        max_text_width = max(20, rect.width - 12)
-
-        for entry in visible_entries:
-            text = entry.get("text", "")
-            color = self._resolve_color(entry)
-            for line in self._wrap_text(text, max_text_width):
-                wrapped_rows.append((line, color))
-
-        rows_to_draw = wrapped_rows[-max_rows:]
         y = rect.y + 4
         for line, color in rows_to_draw:
             surface = self.font.render(line, True, color)
             self.screen.blit(surface, (rect.x + 6, y))
             y += self.line_height
+
+        self.scroller.draw_scrollbar(self.screen, rect, len(wrapped_rows))
+
+    def _build_wrapped_rows(self, max_text_width: int) -> list[tuple[str, tuple[int, int, int]]]:
+        # 中文注释：移动日志保留在数据层，但不显示在战斗 UI。
+        raw_entries = self.battle_log.get_recent_entries(200)
+        visible_entries = [entry for entry in raw_entries if entry.get("category") != "move"]
+
+        wrapped_rows: list[tuple[str, tuple[int, int, int]]] = []
+        for entry in visible_entries:
+            text = entry.get("text", "")
+            color = self._resolve_color(entry)
+            for line in self._wrap_text(text, max_text_width):
+                wrapped_rows.append((line, color))
+        return wrapped_rows
 
     def _resolve_color(self, entry: dict[str, str]) -> tuple[int, int, int]:
         # 中文注释：我方/敌方攻击日志分别使用不同颜色显示。
@@ -80,7 +102,6 @@ class BattleLogPanel:
                 lines.append(current)
                 current = ch
             else:
-                # 中文注释：极端情况下单字符已超宽，也至少绘制该字符。
                 lines.append(ch)
                 current = ""
 

@@ -55,7 +55,6 @@ class Game:
         player_units: list[Unit] | None = None,
         enemy_units: list[Unit] | None = None,
     ) -> None:
-        # 中文注释：允许外部 Screen 注入关卡/场景/实体；未注入时走默认加载流程。
         self.level_data = level_data if level_data is not None else load_level("level_1")
         self.scenario_data = scenario_data if scenario_data is not None else load_scenario("scenario_1")
 
@@ -88,10 +87,8 @@ class Game:
             enemy_team_id=ENEMY_TEAM_ID,
         )
 
-        # 中文注释：战斗日志由 Game 持有，供状态机、控制器和 UI 统一读写。
         self.battle_log = BattleLog()
 
-        # 中文注释：为单位挂载日志引用，供护盾/持续效果等逻辑层输出日志。
         for unit in self.units:
             unit.set_battle_log(self.battle_log)
             unit.set_battle_context(self)
@@ -103,7 +100,6 @@ class Game:
         self.map_pixel_width = self.grid.width * self.tile_size
         self.map_pixel_height = self.grid.height * self.tile_size
 
-        # 中文注释：窗口尺寸优先沿用当前 display，再按地图最小显示需求兜底扩展。
         current_surface = pygame.display.get_surface()
         if current_surface is not None:
             base_width, base_height = current_surface.get_size()
@@ -123,7 +119,6 @@ class Game:
         self.selected_unit: Unit | None = None
         self.selected_skill: Skill | None = None
 
-        # 中文注释：先构造菜单对象，具体位置在 _recalculate_layout 中更新。
         self.action_menu = ActionMenu()
         self.skill_menu = SkillMenu(x=0, y=0)
 
@@ -144,7 +139,6 @@ class Game:
             player_camp=PLAYER,
         )
 
-        # 中文注释：先初始化占位 UISystem，再由 _recalculate_layout 写入真实布局。
         zero = pygame.Rect(0, 0, 1, 1)
         self.ui_system = UISystem(
             screen=self.screen,
@@ -175,7 +169,6 @@ class Game:
         self.window_width = screen_width
         self.window_height = screen_height
 
-        # 中文注释：区域4是最右侧整列日志栏；区域1/2/3在左侧主内容区。
         self.log_panel_rect = pygame.Rect(
             screen_width - log_panel_width,
             0,
@@ -200,13 +193,11 @@ class Game:
             self.bottom_panel_rect.height,
         )
 
-        # 中文注释：战场网格在区域1中居中显示。
         self.battlefield_origin = (
             self.battlefield_rect.x + (self.battlefield_rect.width - self.map_pixel_width) // 2,
             self.battlefield_rect.y + (self.battlefield_rect.height - self.map_pixel_height) // 2,
         )
 
-        # 中文注释：Action/Skill 菜单锚点和尺寸按区域3比例计算，避免固定像素。
         action_margin_x = max(12, int(self.action_panel_rect.width * 0.08))
         action_margin_y = max(12, int(self.action_panel_rect.height * 0.18))
         menu_x = self.action_panel_rect.x + action_margin_x
@@ -246,7 +237,6 @@ class Game:
 
     def _apply_level_terrain(self, level_data: dict[str, object]) -> None:
         """将关卡地形数据写入 grid tile。"""
-        # 中文注释：只做初始化赋值，不触发额外战斗逻辑。
         terrain_list = list(level_data.get("terrain", []))
         for terrain_item in terrain_list:
             if not isinstance(terrain_item, dict):
@@ -269,6 +259,7 @@ class Game:
         """处理输入事件：保存当前帧事件并处理退出事件。"""
         self.events = pygame.event.get() if events is None else events
         for event in self.events:
+            self.ui_system.handle_event(event)
             if event.type == pygame.QUIT:
                 self.running = False
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -356,11 +347,9 @@ class Game:
         pygame.display.flip()
 
     def _should_show_action_menu(self) -> bool:
-        # 中文注释：仅当当前选中单位“可由玩家操作”时显示行动菜单。
         return self.game_state == GameState.UNIT_SELECTED and self.can_command_selected_unit()
 
     def _should_show_skill_menu(self) -> bool:
-        # 中文注释：技能菜单仅在技能模式且单位有技能时显示。
         return (
             self.game_state == GameState.SKILL_MODE
             and self.can_command_selected_unit()
@@ -375,7 +364,6 @@ class Game:
         return self.selected_unit
 
     def can_command_selected_unit(self) -> bool:
-        # 中文注释：只有玩家回合 + 玩家单位 + 未行动 + 存活，才允许进入行动指令。
         if self.turn_manager.current_camp != PLAYER:
             return False
         if self.selected_unit is None:
@@ -389,7 +377,6 @@ class Game:
         return not self.selected_unit.state.acted
 
     def get_viewable_unit_at(self, grid_pos: tuple[int, int]) -> Unit | None:
-        # 中文注释：可查看单位不限制阵营与 acted，只要存活且位置匹配即可。
         return self.get_unit_at(grid_pos)
 
     def get_unit_at(self, grid_pos: tuple[int, int]) -> Unit | None:
@@ -411,7 +398,6 @@ class Game:
         return unit
 
     def screen_to_grid(self, pos: tuple[int, int]) -> tuple[int, int] | None:
-        # 中文注释：将屏幕坐标转换为战场格子坐标，仅在有效 tile 内返回结果。
         x, y = pos
         if not self.battlefield_rect.collidepoint(pos):
             return None
@@ -428,9 +414,3 @@ class Game:
         if tile is None:
             return None
         return (grid_x, grid_y)
-
-
-
-
-
-

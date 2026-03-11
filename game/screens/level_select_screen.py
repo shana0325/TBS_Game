@@ -44,6 +44,12 @@ class LevelSelectScreen(ScreenBase):
                 )
                 return
 
+            if event.key == pygame.K_p:
+                from game.screens.progression_screen import ProgressionScreen
+
+                self.manager.switch_to(ProgressionScreen(self.manager, return_screen=self))
+                return
+
             if event.key == pygame.K_ESCAPE:
                 from game.screens.main_menu_screen import MainMenuScreen
 
@@ -60,12 +66,13 @@ class LevelSelectScreen(ScreenBase):
         title_surface = self.title_font.render("Level Select", True, (230, 236, 245))
         info_surface = self.text_font.render("Scenario 1 (level_1)", True, (190, 220, 255))
         start_surface = self.text_font.render("Enter: Deployment", True, (170, 230, 180))
+        progression_surface = self.text_font.render("P: Progression", True, (230, 210, 160))
         back_surface = self.text_font.render("ESC: Back", True, (220, 180, 180))
 
         screen.blit(title_surface, (80, 80))
         screen.blit(info_surface, (80, 170))
         screen.blit(start_surface, (80, 220))
-        screen.blit(back_surface, (80, 260))
+        screen.blit(progression_surface, (80, 260))
+        screen.blit(back_surface, (80, 300))
 
         pygame.display.flip()
-

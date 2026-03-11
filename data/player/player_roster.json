@@ -1,19 +1,46 @@
-﻿{
+{
   "units": [
     {
       "id": "hero_001",
       "type": "Hero",
       "level": 1,
       "exp": 0,
+      "stat_points": 0,
+      "skill_points": 0,
       "equipment": [],
-      "extra_skills": ["Poison Strike","Guard Shield"]
+      "allocated_stats": {
+        "attack": 4,
+        "defense": 1
+      },
+      "learned_skills": [
+        "Poison Strike",
+        "Blood Rush",
+        "Counter Stance",
+        "Concussion Blow"
+      ],
+      "equipped_skills": [
+        "Guard Shield",
+        "Blood Rush",
+        "Counter Stance"
+      ],
+      "extra_skills": []
     },
     {
       "id": "knight_001",
       "type": "Knight",
       "level": 1,
       "exp": 0,
+      "stat_points": 0,
+      "skill_points": 3,
       "equipment": [],
+      "allocated_stats": {
+        "defense": 1,
+        "attack": 2
+      },
+      "learned_skills": [
+        "Battle Chant"
+      ],
+      "equipped_skills": [],
       "extra_skills": []
     }
   ]

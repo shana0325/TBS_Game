@@ -70,14 +70,13 @@ class SpawnSystem:
         for index, roster_entry in enumerate(roster):
             unit_type = str(roster_entry.get("type", ""))
             pos = deployment_positions[index]
-            extra_skills = cls._normalize_skill_ids(roster_entry.get("extra_skills", []))
             units.append(
                 cls._create_unit_from_template(
                     grid=grid,
                     unit_type=unit_type,
                     pos=pos,
                     team_id=player_team_id,
-                    extra_skill_ids=extra_skills,
+                    unit_overrides=roster_entry,
                 )
             )
         return units
@@ -106,7 +105,7 @@ class SpawnSystem:
         unit_type: str,
         pos: tuple[int, int],
         team_id: int,
-        extra_skill_ids: list[str] | None = None,
+        unit_overrides: dict[str, object] | None = None,
     ) -> Unit:
         """在指定位置生成单个单位，供召唤等系统调用。"""
         return cls._create_unit_from_template(
@@ -114,7 +113,7 @@ class SpawnSystem:
             unit_type=unit_type,
             pos=pos,
             team_id=team_id,
-            extra_skill_ids=extra_skill_ids,
+            unit_overrides=unit_overrides,
         )
 
     @classmethod
@@ -135,14 +134,13 @@ class SpawnSystem:
                 raise ValueError(f"Invalid spawn index {spawn_index} for unit type {unit_type}")
 
             spawn_pos = spawn_points[spawn_index]
-            extra_skills = cls._normalize_skill_ids(spec.get("extra_skills", []))
             units.append(
                 cls._create_unit_from_template(
                     grid=grid,
                     unit_type=unit_type,
                     pos=spawn_pos,
                     team_id=team_id,
-                    extra_skill_ids=extra_skills,
+                    unit_overrides=spec,
                 )
             )
 
@@ -155,7 +153,7 @@ class SpawnSystem:
         unit_type: str,
         pos: tuple[int, int],
         team_id: int,
-        extra_skill_ids: list[str] | None = None,
+        unit_overrides: dict[str, object] | None = None,
     ) -> Unit:
         tile = grid.get_tile(pos[0], pos[1])
         if tile is None:
@@ -165,11 +163,14 @@ class SpawnSystem:
         if template is None:
             raise ValueError(f"Unknown unit type: {unit_type}")
 
+        overrides = unit_overrides if isinstance(unit_overrides, dict) else {}
+        allocated_stats = cls._normalize_stat_map(overrides.get("allocated_stats", {}))
+
         config = UnitConfig(
-            hp=int(template["hp"]),
-            atk=int(template["atk"]),
-            defense=int(template["defense"]),
-            move=int(template["move"]),
+            hp=int(template["hp"]) + allocated_stats.get("hp", 0),
+            atk=int(template["atk"]) + allocated_stats.get("attack", 0) + allocated_stats.get("atk", 0),
+            defense=int(template["defense"]) + allocated_stats.get("defense", 0),
+            move=int(template["move"]) + allocated_stats.get("move", 0),
             range_min=int(template["range_min"]),
             range_max=int(template["range_max"]),
         )
@@ -180,23 +181,32 @@ class SpawnSystem:
             alive=True,
             team_id=team_id,
         )
-        skills = cls._build_skills_for_unit(template, extra_skill_ids)
+        skills = cls._build_skills_for_unit(template, overrides)
         unit = Unit(config=config, state=state, skills=skills)
         setattr(unit, "name", unit_type)
+        if "id" in overrides:
+            setattr(unit, "player_unit_id", str(overrides.get("id", "")))
+        if "level" in overrides:
+            setattr(unit, "level", int(overrides.get("level", 1)))
         return unit
 
     @classmethod
     def _build_skills_for_unit(
         cls,
         unit_template: dict[str, object],
-        extra_skill_ids: list[str] | None = None,
+        unit_overrides: dict[str, object] | None = None,
     ) -> list[Skill]:
-        # 中文注释：单位技能来源 = 模板技能 + 额外技能，按顺序合并并去重。
+        # 中文注释：单位技能来源 = 模板技能 + learned/equipped/extra，按顺序合并并去重。
         result: list[Skill] = []
 
+        overrides = unit_overrides if isinstance(unit_overrides, dict) else {}
         template_skill_ids = cls._normalize_skill_ids(unit_template.get("skills", []))
+        learned_skill_ids = cls._normalize_skill_ids(overrides.get("learned_skills", []))
+        equipped_skill_ids = cls._normalize_skill_ids(overrides.get("equipped_skills", []))
+        extra_skill_ids = cls._normalize_skill_ids(overrides.get("extra_skills", []))
+
         merged_skill_ids: list[str] = []
-        for skill_id in template_skill_ids + (extra_skill_ids or []):
+        for skill_id in template_skill_ids + learned_skill_ids + equipped_skill_ids + extra_skill_ids:
             if skill_id not in merged_skill_ids:
                 merged_skill_ids.append(skill_id)
 
@@ -240,4 +250,18 @@ class SpawnSystem:
             skill_name = str(skill_id).strip()
             if skill_name:
                 result.append(skill_name)
+        return result
+
+    @staticmethod
+    def _normalize_stat_map(raw_stats: object) -> dict[str, int]:
+        # 中文注释：将角色成长中的属性加点标准化为数值映射。
+        if not isinstance(raw_stats, dict):
+            return {}
+
+        result: dict[str, int] = {}
+        for key, value in raw_stats.items():
+            stat_name = str(key).strip().lower()
+            if not stat_name:
+                continue
+            result[stat_name] = int(value)
         return result

@@ -1,6 +1,6 @@
 ﻿# TBS Game Prototype
 
-This repository contains a Python 2D turn-based strategy (TBS) prototype focused on validating modular battle systems and screen flow end-to-end.
+This repository contains a Python 2D turn-based strategy (TBS) prototype focused on validating modular battle systems, screen flow, and data-driven combat growth end-to-end.
 
 ## Project Structure
 
@@ -32,21 +32,52 @@ TBS_Game/
     dev_log.md
 
   game/
+    ai/
+      enemy_ai.py
+
+    battle/
+      combat/
+        combat_system.py
+        damage_calculator.py
+        highlight_system.py
+      effects/
+        effect_system.py
+        damage_effect.py
+        heal_effect.py
+        buff_effect.py
+        summon_effect.py
+        revive_effect.py
+      events/
+        battle_event.py
+        event_system.py
+        event_types.py
+      movement/
+        grid.py
+        pathfinder.py
+        tile.py
+      turn/
+        turn_manager.py
+
+    controllers/
+      enemy_controller.py
+      player_controller.py
+
     core/
       game.py
       game_state.py
       game_app.py
-      scene_manager.py
       input_handler.py
+      scene_manager.py
 
-    screens/
-      screen_base.py
-      screen_manager.py
-      main_menu_screen.py
-      level_select_screen.py
-      deployment_screen.py
-      battle_screen.py
-      result_screen.py
+    data/
+      config_loader.py
+      game_database.py
+      schema_validator.py
+
+    entity/
+      buff.py
+      skill.py
+      unit.py
 
     levels/
       level/
@@ -58,64 +89,44 @@ TBS_Game/
       systems/
         spawn_system.py
 
+    player/
+      player_army.py
+      player_unit_data.py
+      progression_system.py
+
+    render/
+      attack_highlight_renderer.py
+      highlight_renderer.py
+      map_renderer.py
+      path_renderer.py
+
+    screens/
+      battle_screen.py
+      deployment_screen.py
+      level_select_screen.py
+      main_menu_screen.py
+      progression_screen.py
+      result_screen.py
+      screen_base.py
+      screen_manager.py
+
     state/
+      attack_state.py
       game_state_base.py
       idle_state.py
       move_state.py
-      attack_state.py
       skill_state.py
 
-    controllers/
-      enemy_controller.py
-      player_controller.py
-
-    battle/
-      battle_system.py
-      action_queue.py
-      movement/
-        tile.py
-        grid.py
-        pathfinder.py
-      combat/
-        damage_calculator.py
-        combat_system.py
-        highlight_system.py
-      turn/
-        turn_manager.py
-
-    entity/
-      unit.py
-      skill.py
-      buff.py
-
-    ai/
-      enemy_ai.py
-
-    player/
-      player_army.py
-
-    render/
-      map_renderer.py
-      highlight_renderer.py
-      path_renderer.py
-      attack_highlight_renderer.py
-      unit_renderer.py
-      effect_renderer.py
-
     ui/
-      ui_system.py
-      hud.py
       action_menu.py
-      skill_menu.py
-      unit_info_panel.py
       battle_log.py
       battle_log_panel.py
+      hud.py
       menu.py
-
-    data/
-      config_loader.py
-      game_database.py
-      schema_validator.py
+      scrollable_list.py
+      skill_menu.py
+      ui_system.py
+      unit_info_panel.py
 
     save/
       save_manager.py
@@ -123,49 +134,47 @@ TBS_Game/
 
 ## Current Development Status
 
-- Screen System: `ScreenManager` + `MainMenu / LevelSelect / Deployment / Battle / Result` 已接入。
-- Level/Scenario/Spawn: `Level`（地图数据）/`Scenario`（敌方配置与规则）/`SpawnSystem`（实体生成）职责分离。
-- PlayerArmy: 玩家可部署单位来源已从 `Scenario` 分离，统一由 `data/player/player_roster.json` + `PlayerArmy` 提供。
-- Deployment Phase: 战前部署可选择 roster 单位并放置到部署区，再进入战斗。
-- Dual Battlefield: 双战场 + 中间 gap 规则已实现，跨战场攻击可判定。
-- Unit/Turn/AI: 多单位回合、已行动状态、敌方逐单位行动已实现。
-- Movement/Combat: Dijkstra 可达范围、路径预览、基础伤害与射程判定已实现。
-- Skill System (MVP):
-  - 新增 `Skill` 实体与 `SkillMenu`、`SkillState`
-  - 支持示例技能 `Power Strike`（150% 伤害）
-  - `Knight` 默认携带该技能
-- Battle Log System:
-  - 记录开战、回合切换、攻击、击杀、等待、结算
-  - 玩家/敌方攻击日志分色显示
-  - 长日志自动换行
-  - 移动日志保留数据但默认不在战斗 UI 显示
-- Responsive UI Layout:
-  - 布局保持 `11114 / 11114 / 22334`
-  - 1: 战场，2: 单位信息，3: 行动/技能，4: 战斗日志
-  - 基于 `screen.get_width()/get_height()` 比例计算
-  - 支持运行中拖拽窗口实时重排（battle/deployment/menu/result）
+- Grid / Tile System: 已完成普通地块与双战场 `DualGrid`，支持左右独立战场与中间 gap。
+- Unit System: `UnitConfig / UnitState / Unit` 已完成，并支持技能、Buff、护盾、控制状态与持久化角色元数据挂载。
+- Movement System (Dijkstra): 已完成移动范围计算与路径预览基础，仍保持纯逻辑实现。
+- Combat System: 已完成伤害计算、攻击距离判定、跨战场攻击规则，以及事件驱动的反击/触发能力。
+- Turn System: 已完成阵营切换、已行动状态管理、Buff 回合节点处理与事件派发。
+- Enemy AI: 已支持基础攻击、移动、等待逻辑，并可在敌方回合逐单位执行。
+- CLI integration test: 早期已完成 CLI 验证，用于确认核心逻辑可独立运行。
+- Pygame rendering: 已完成地图、单位、移动范围、攻击范围、路径预览渲染。
+- HUD UI: 基础 HUD 已保留，当前主战斗信息主要由 `UnitInfoPanel`、`ActionMenu`、`BattleLogPanel` 承担。
+- Screen System: 已完成 `MainMenu -> LevelSelect -> Deployment -> Battle -> Result` 流程。
+- Deployment System: 已支持部署阶段读取全局玩家编成并放置到部署区。
+- Skill / Effect System: 技能已切换为 `EffectSystem` 驱动，支持 `damage / heal / buff / summon / revive`。
+- Buff System: 已支持属性增益、DOT/HOT、Stun、Silence、Shield、Counter、Aura 等效果基础。
+- Event System: 已完成集中式战斗事件分发，用于命中、击杀、回合开始/结束等触发逻辑。
+- Progression System: 已支持 EXP、升级、属性点、技能点、学习技能、装备技能，并写回 `player_roster.json`。
+- Scrollable UI: 已新增通用 `ScrollableList` 组件，统一战斗日志与成长界面的滚动行为与滚动条样式。
 
 ## Gameplay (Current Prototype)
 
-- 主流程：`Main Menu -> Level Select -> Deployment -> Battle -> Result`。
-- 部署阶段：从全局玩家编成中读取单位并放置到玩家部署区，完成后开始战斗。
-- 战斗阶段：
-  - 选择单位后可执行 `Move / Attack / Skill / Wait`
-  - `Skill` 可选择技能后点目标释放
-  - 右键可取消 `Move/Attack/Skill` 状态，避免无目标时卡住
-- 敌方回合自动行动，回合自动切换。
-- 右侧日志栏实时显示关键战斗事件。
+- 主流程：`Main Menu -> Level Select -> Progression / Deployment -> Battle -> Result`
+- 选关界面可进入成长界面，在战斗前查看并调整角色成长。
+- 成长界面当前支持：
+  - 鼠标点击选择角色
+  - 鼠标点击属性 `+` 按钮加点
+  - 鼠标选择技能并点击 `Learn / Equip`
+  - 滚轮滚动单位列表、属性列表、技能列表
+- 部署阶段会从全局 `PlayerArmy` 读取玩家单位，并决定出战位置。
+- 战斗阶段支持 `Move / Attack / Skill / Wait`，敌方回合自动执行 AI 行动。
+- 右侧 Battle Log 实时显示回合、攻击、击杀、成长等关键事件，并支持滚动查看历史日志。
+- 战斗胜利后会给参战玩家单位发放固定 EXP，并自动处理升级与点数增长。
 
 ## Next Possible Improvements
 
-- 技能系统扩展：冷却、消耗、AOE、治疗、Buff/Debuff。
-- 技能选择体验优化：范围高亮、无效目标提示、键盘快捷键。
-- 战斗日志增强：分页/滚动、筛选、历史回放。
-- 地图与场景扩展：多关卡、多胜利条件、脚本事件。
-- 更高级 AI：仇恨、站位、集火和风险评估。
-- 玩家编成扩展：背包/装备加成、编队上限、出战过滤规则。
+- 为 `ProgressionScreen` 增加技能说明、职业限制、前置技能和禁用态提示。
+- 将 `SkillMenu`、`ActionMenu` 也统一迁移到 `ScrollableList` 风格。
+- 增加成长界面中的技能分类、分页和角色详情面板。
+- 增加装备系统、背包系统和更完整的存档读写。
+- 扩展战斗技能效果：AOE、位移、召唤控制区、持续光环刷新提示。
+- 为 Battle Log 增加筛选、自动跳到最新、分页与高亮关键事件能力。
 
 ## Notes
 
-- 当前版本重点是架构验证和模块边界清晰。
-- 游戏逻辑与渲染/UI 仍保持分层，便于后续扩展。
+- 当前版本重点仍然是架构验证、模块边界清晰，以及 data-driven 设计可扩展性。
+- 游戏逻辑与 pygame 渲染/UI 保持分层，便于后续继续扩展成长、关卡与复杂战斗机制。

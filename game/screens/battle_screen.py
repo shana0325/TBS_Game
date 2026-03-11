@@ -17,6 +17,7 @@ TERRAIN_PRESETS: dict[str, dict[str, int]] = {
     "plain": {"move_cost": 1, "defense_bonus": 0},
     "forest": {"move_cost": 2, "defense_bonus": 1},
 }
+VICTORY_EXP_REWARD = 100
 
 
 class BattleScreen(ScreenBase):
@@ -32,6 +33,7 @@ class BattleScreen(ScreenBase):
         super().__init__(manager)
         self.level_name = level_name
         self.scenario_name = scenario_name
+        self.player_army = PlayerArmy()
 
         # 中文注释：在 Screen 层完成关卡和场景加载。
         level_data = load_level(level_name)
@@ -42,7 +44,7 @@ class BattleScreen(ScreenBase):
         self._apply_level_terrain(grid, level_data)
 
         # 中文注释：玩家出战名单统一来自全局 PlayerArmy。
-        roster = PlayerArmy().get_deployable_units()
+        roster = self.player_army.get_deployable_units()
         if deployed_player_positions is None:
             deployment_positions = list(level_data.get("deployment_zones", {}).get("player", []))[: len(roster)]
         else:
@@ -91,6 +93,8 @@ class BattleScreen(ScreenBase):
             return
 
         result_text = self._resolve_result_text()
+        if result_text == "Victory":
+            self._apply_victory_rewards()
         self.game.battle_log.add(result_text, category="result", side="neutral")
 
         from game.screens.result_screen import ResultScreen
@@ -142,7 +146,31 @@ class BattleScreen(ScreenBase):
             return "Defeat"
         return "Battle Ended"
 
+    def _apply_victory_rewards(self) -> None:
+        # 中文注释：最小版本为每个参战玩家角色发固定经验，并写回 roster。
+        rewarded_units: list[tuple[str, dict[str, int]]] = []
+        for unit in self.game.player_units:
+            unit_id = getattr(unit, "player_unit_id", "")
+            if not unit_id:
+                continue
 
+            reward_result = self.player_army.grant_exp(unit_id, VICTORY_EXP_REWARD)
+            rewarded_units.append((unit_id, reward_result))
 
+        for unit_id, reward in rewarded_units:
+            if reward.get("exp_gained", 0) <= 0:
+                continue
 
-
+            unit_data = self.player_army.find_unit(unit_id)
+            label = unit_data.unit_type if unit_data is not None else unit_id
+            self.game.battle_log.add(
+                f"{label} gains {reward['exp_gained']} EXP",
+                category="progression",
+                side="player",
+            )
+            if reward.get("levels_gained", 0) > 0 and unit_data is not None:
+                self.game.battle_log.add(
+                    f"{label} reaches Lv.{unit_data.level}",
+                    category="progression",
+                    side="player",
+                )
