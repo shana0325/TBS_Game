@@ -160,3 +160,8 @@
 ## Stage 40 - Character Select Progression Flow
 - Added `ProgressionCharacterSelectScreen` as a pre-growth role selection step with horizontal character cards.
 - Converted `ProgressionScreen` into a single-character growth screen and added `ProgressionUnitSummaryPanel` for the left-side character summary.
+
+
+## Stage 41 - Placeholder Unit Sprite Generator
+- Added `tools/generate_unit_sprites.py` and `tools/unit_sprite_presets.json` to batch-generate consistent 32x32 placeholder unit sprites.
+- Added `tools/generate_unit_sprites.md` to document sprite generation flow, preset structure, and future feature/base extension steps.

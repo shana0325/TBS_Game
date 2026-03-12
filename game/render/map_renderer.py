@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pygame
 
 from game.entity.unit import Unit
@@ -14,6 +16,11 @@ ENEMY_GRID_BORDER_COLOR = (230, 80, 80)
 GAP_BG_COLOR = (238, 242, 248)
 PLAYER_COLOR = (60, 120, 255)
 ENEMY_COLOR = (220, 70, 70)
+SPRITE_PADDING = 4
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_UNIT_ASSET_DIR = _PROJECT_ROOT / "assets" / "units"
+_SPRITE_CACHE: dict[tuple[str, int], pygame.Surface] = {}
 
 
 def render_map(
@@ -92,6 +99,33 @@ def _draw_units(
         if grid.get_tile(x, y) is None:
             continue
 
-        color = PLAYER_COLOR if unit.state.team_id == 1 else ENEMY_COLOR
         rect = pygame.Rect(ox + x * tile_size, oy + y * tile_size, tile_size, tile_size)
+        sprite = _get_unit_sprite(unit, tile_size)
+        if sprite is not None:
+            screen.blit(sprite, rect.move(SPRITE_PADDING, SPRITE_PADDING))
+            continue
+
+        # 中文注释：贴图缺失时回退到原有色块逻辑，避免资源缺失导致单位不显示。
+        color = PLAYER_COLOR if unit.state.team_id == 1 else ENEMY_COLOR
         pygame.draw.rect(screen, color, rect)
+
+
+def _get_unit_sprite(unit: Unit, tile_size: int) -> pygame.Surface | None:
+    unit_name = str(getattr(unit, "name", "")).strip().lower()
+    if not unit_name:
+        return None
+
+    cache_key = (unit_name, tile_size)
+    cached = _SPRITE_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    sprite_path = _UNIT_ASSET_DIR / f"{unit_name}.png"
+    if not sprite_path.exists():
+        return None
+
+    source = pygame.image.load(str(sprite_path)).convert_alpha()
+    target_size = max(8, tile_size - SPRITE_PADDING * 2)
+    scaled = pygame.transform.scale(source, (target_size, target_size))
+    _SPRITE_CACHE[cache_key] = scaled
+    return scaled

@@ -12,6 +12,11 @@ TBS_Game/
   ARCHITECTURE.md
   requirements.txt
 
+  tools/
+    generate_unit_sprites.py
+    generate_unit_sprites.md
+    unit_sprite_presets.json
+
   assets/
     fonts/
       LXGWWenKai-Light.ttf
