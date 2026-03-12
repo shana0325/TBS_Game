@@ -13,6 +13,7 @@ class GameDatabase:
         self.units = loader.units
         self.skills = loader.skills
         self.buffs = loader.buffs
+        self.equipments = loader.equipments
 
     def get_unit(self, unit_id: str) -> dict[str, object] | None:
         return self.units.get(unit_id)
@@ -22,3 +23,6 @@ class GameDatabase:
 
     def get_buff(self, buff_id: str) -> dict[str, object] | None:
         return self.buffs.get(buff_id)
+
+    def get_equipment(self, equipment_id: str) -> dict[str, object] | None:
+        return self.equipments.get(equipment_id)

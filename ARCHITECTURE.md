@@ -28,6 +28,8 @@ TBS_Game/
       skills.json                # 技能模板配置
     buff/
       buffs.json                 # Buff 模板配置
+    equipment/
+      equipments.json            # 装备模板配置
     player/
       player_roster.json         # 玩家全局编成（成长/技能/装备/额外元数据）
 
@@ -79,12 +81,13 @@ TBS_Game/
         en_us.py                 # 英文文案、说明文本、动态格式化
 
     data/
-      config_loader.py           # JSON 配置加载（units/skills/buffs）
-      game_database.py           # 配置统一访问接口（get_unit/get_skill/get_buff）
+      config_loader.py           # JSON 配置加载（units/skills/buffs/equipments）
+      game_database.py           # 配置统一访问接口（get_unit/get_skill/get_buff/get_equipment）
       schema_validator.py        # 预留：配置校验骨架
 
     entity/
       buff.py                    # Buff 实体（持续回合/属性修正/控制/护盾/触发）
+      equipment.py               # Equipment 实体（slot/modifiers/granted_skills）
       skill.py                   # Skill 实体（effects 列表 + execute）
       unit.py                    # UnitConfig / UnitState / Unit（skills/buffs/状态辅助）
 
@@ -96,9 +99,10 @@ TBS_Game/
         scenario_1.py            # 场景配置（level/enemy_units/victory_condition）
         scenario_loader.py       # 场景加载器
       systems/
-        spawn_system.py          # 单位生成系统（按模板创建玩家/敌方/召唤单位）
+        spawn_system.py          # 单位生成系统（按模板创建玩家/敌方/召唤单位，并应用成长与装备）
 
     player/
+      equipment_system.py        # 装备槽位管理、属性汇总、装备技能汇总
       player_army.py             # 玩家全局编成读取、修改、保存
       player_unit_data.py        # 玩家持有角色持久化数据模型
       progression_system.py      # EXP/升级/加点/学技能/装备技能逻辑
@@ -114,7 +118,8 @@ TBS_Game/
       deployment_screen.py       # 战前部署（从 PlayerArmy 读取可部署单位，支持实时重排）
       level_select_screen.py     # 关卡/场景选择
       main_menu_screen.py        # 主菜单
-      progression_screen.py      # 战前成长界面（鼠标选择、加点、学技能、装备技能）
+      progression_character_select_screen.py # 战前成长角色选择（横向角色卡片列表）
+      progression_screen.py      # 单角色成长界面（左侧角色信息 + 右侧属性/技能/装备页签）
       result_screen.py           # 结算界面
       screen_base.py             # Screen 抽象基类（handle_input/update/render）
       screen_manager.py          # Screen 切换与主循环转发
@@ -134,6 +139,11 @@ TBS_Game/
       hud.py                     # HUD 兼容接口（当前主要信息由 Unit Info Panel 提供）
       language_shortcut.py       # F2 语言切换快捷键处理
       menu.py                    # 预留：菜单骨架
+      progression_tabs.py        # 成长子页签组件
+      progression_stat_panel.py  # 属性页面板
+      progression_skill_panel.py # 技能页面板
+      progression_equipment_panel.py # 装备页面板
+      progression_unit_summary_panel.py # 单角色左侧信息面板
       scrollable_list.py         # 通用滚动列表状态与滚动条组件
       skill_menu.py              # 技能菜单
       ui_system.py               # 战斗 UI 面板总渲染（区域2/3/4）
@@ -146,22 +156,27 @@ TBS_Game/
 # Layer Notes
 
 - `screens/` 负责战斗外流程和界面切换；`core/game.py` 负责战斗运行时。
+- 成长流程拆为两段：
+  - `progression_character_select_screen.py`：选择要培养的角色
+  - `progression_screen.py`：进入单角色成长页
 - `levels/` 负责战斗准备数据：
   - `Level`：地图/地形/部署区/出生点
   - `Scenario`：敌方配置与战斗规则
-  - `SpawnSystem`：按模板与成长数据生成战斗单位
+  - `SpawnSystem`：按模板与成长数据、装备数据生成战斗单位
 - `player/` 负责玩家长期持有数据与成长系统，不直接参与 pygame 渲染。
-- `state/` 负责玩家战斗中的输入状态流转：`Idle / Move / Attack / Skill`。
+- `player/equipment_system.py` 负责装备槽位与数值整合，不把装备逻辑塞进 `Unit` 或 UI。
+- `ui/progression_*` 模块负责成长界面具体子页与组件，`ProgressionScreen` 只负责当前角色、当前页签和动作分发。
 - `battle/effects/` 负责执行技能效果；`battle/events/` 负责广播战斗事件；`entity/buff.py` 负责响应触发与持续效果。
 - `ui/scrollable_list.py` 为通用滚动行为组件，供成长界面和战斗日志等列表型 UI 复用。
-- `core/texts.py + core/i18n/*` 负责统一文本来源；`ui/font_manager.py` 负责统一字体来源，避免各界面分散加载字体或硬编码字符串。
+- `core/texts.py + core/i18n/*` 负责统一文本来源；`ui/font_manager.py` 负责统一字体来源。
 
 # Runtime Flow
 
 ```text
 Main Menu
 -> Level Select
--> Progression (optional)
+-> Progression Character Select (optional)
+-> Progression (single unit, optional)
 -> Deployment
 -> Battle
 -> Result
@@ -192,9 +207,6 @@ UI / Screen / Battle Log
 - 逻辑模块保持 pygame-free；pygame 主要出现在 `screens/`、`render/`、`ui/`、`main.py`。
 - `damage_calculator.py` 只负责数值计算；状态修改应由更高层协调。
 - 新功能优先扩展现有模块职责边界，不随意合并层级。
-- UI 布局语义保持 `11114 / 11114 / 22334`，并通过比例计算支持窗口实时重排。
+- 成长界面避免把“角色选择 + 属性 + 技能 + 装备”同时堆在一个 Screen 中；优先拆为前置选择与子页签结构。
 - 界面文本不要在各模块内随意硬编码；优先写入 `game/core/i18n/` 语言包，并通过 `game/core/texts.py` 访问。
 - 当前项目保留 `texts / i18n` 接口结构以保证扩展性，但后续开发默认只维护中文文案；除非用户明确要求，否则不需要同步更新英文文案。
-
-
-

@@ -7,7 +7,11 @@
       "exp": 0,
       "stat_points": 2,
       "skill_points": 1,
-      "equipment": [],
+      "equipment": {
+        "weapon": "iron_sword",
+        "offhand": "wooden_shield",
+        "accessory": "toxic_charm"
+      },
       "allocated_stats": {
         "attack": 4,
         "defense": 1
@@ -32,7 +36,11 @@
       "exp": 0,
       "stat_points": 2,
       "skill_points": 4,
-      "equipment": [],
+      "equipment": {
+        "weapon": "bronze_spear",
+        "offhand": "wooden_shield",
+        "accessory": "swift_boots"
+      },
       "allocated_stats": {
         "defense": 1,
         "attack": 2

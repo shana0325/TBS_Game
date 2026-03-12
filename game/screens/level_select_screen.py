@@ -104,9 +104,9 @@ class LevelSelectScreen(ScreenBase):
 
     def _open_progression(self) -> None:
         """进入成长界面。"""
-        from game.screens.progression_screen import ProgressionScreen
+        from game.screens.progression_character_select_screen import ProgressionCharacterSelectScreen
 
-        self.manager.switch_to(ProgressionScreen(self.manager, return_screen=self))
+        self.manager.switch_to(ProgressionCharacterSelectScreen(self.manager, return_screen=self))
 
     def _back_to_main_menu(self) -> None:
         """返回主菜单。"""

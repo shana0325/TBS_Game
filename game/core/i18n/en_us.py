@@ -22,17 +22,34 @@ DEPLOYMENT_NOT_READY = "Deploy all units first."
 DEPLOYMENT_UNPLACED = "Unplaced"
 
 PROGRESSION_TITLE = "Progression"
+PROGRESSION_SELECT_TITLE = "Select Character"
+PROGRESSION_SELECT_HELP = "Click a character to enter progression   Wheel/Left/Right: scroll   ESC: back"
+PROGRESSION_PROFESSION_LABEL = "Class"
+PROGRESSION_PROFESSION_UNKNOWN = "Unassigned"
+PROGRESSION_SUMMARY_TITLE = "Character Info"
+PROGRESSION_EQUIPMENT_HEADER = "Equipped Items"
 PROGRESSION_PANEL_UNITS = "Units"
 PROGRESSION_PANEL_STATS = "Stats"
-PROGRESSION_PANEL_SKILLS = "Skills"
+PROGRESSION_PANEL_SKILLS = "Progression Modes"
+PROGRESSION_TAB_STATS = "Stats"
+PROGRESSION_TAB_SKILLS = "Skills"
+PROGRESSION_TAB_EQUIPMENT = "Equipment"
+PROGRESSION_SKILL_SECTION = "Skills"
+PROGRESSION_EQUIPMENT_SECTION = "Equipment"
+PROGRESSION_EQUIPMENT_SLOTS = "Equipment Slots"
 PROGRESSION_NO_SKILLS = "No skills available"
-PROGRESSION_HELP = "Mouse: select/add/learn/equip   Wheel: scroll   ESC: back"
+PROGRESSION_NO_EQUIPMENT = "No equipment for this slot"
+PROGRESSION_HELP = "Mouse: select/add/learn/equip gear   Wheel: scroll   ESC: back"
 PROGRESSION_BUTTON_LEARN = "Learn"
 PROGRESSION_BUTTON_EQUIP = "Equip"
+PROGRESSION_BUTTON_UNEQUIP = "Unequip"
 PROGRESSION_BUTTON_BACK = "Back"
 PROGRESSION_SKILL_STATE_EQUIPPED = "Equipped"
 PROGRESSION_SKILL_STATE_LEARNED = "Learned"
 PROGRESSION_SKILL_STATE_LOCKED = "Locked"
+PROGRESSION_EQUIP_STATE_EQUIPPED = "Equipped"
+PROGRESSION_EQUIP_STATE_AVAILABLE = "Available"
+PROGRESSION_EQUIP_STATE_EMPTY = "Empty"
 PROGRESSION_STATS_HEADER = "Allocated Stats:"
 PROGRESSION_LEARNED_COUNT = "Learned"
 PROGRESSION_EQUIPPED_COUNT = "Equipped"
@@ -42,8 +59,12 @@ PROGRESSION_EXP = "EXP"
 PROGRESSION_STAT_POINTS = "Stat Pts"
 PROGRESSION_SKILL_POINTS = "Skill Pts"
 PROGRESSION_SKILL_DESCRIPTION = "Skill Description"
+PROGRESSION_EQUIPMENT_DESCRIPTION = "Equipment Description"
 PROGRESSION_SKILL_BUFFS = "Buff Effects"
 PROGRESSION_NO_DESCRIPTION = "No description"
+PROGRESSION_SLOT_WEAPON = "Weapon"
+PROGRESSION_SLOT_OFFHAND = "Offhand"
+PROGRESSION_SLOT_ACCESSORY = "Accessory"
 
 RESULT_TIP = "Enter: Main Menu   ESC: Quit"
 
@@ -123,6 +144,22 @@ BUFF_DESCRIPTIONS = {
     "shield": "Absorbs incoming damage first.",
 }
 
+EQUIPMENT_NAMES = {
+    "iron_sword": "Iron Sword",
+    "bronze_spear": "Bronze Spear",
+    "wooden_shield": "Wooden Shield",
+    "swift_boots": "Swift Boots",
+    "toxic_charm": "Toxic Charm",
+}
+
+EQUIPMENT_DESCRIPTIONS = {
+    "iron_sword": "Weapon. Grants ATK +2.",
+    "bronze_spear": "Weapon. Grants ATK +1, DEF +1, and Counter Stance.",
+    "wooden_shield": "Offhand. Grants DEF +2.",
+    "swift_boots": "Accessory. Grants MOVE +1.",
+    "toxic_charm": "Accessory. Grants Poison Strike.",
+}
+
 STATUS_TEXTS = {
     "normal": "Normal",
     "acted": "Acted",
@@ -149,8 +186,24 @@ def get_buff_description(buff_id: str) -> str:
     return BUFF_DESCRIPTIONS.get(buff_id, PROGRESSION_NO_DESCRIPTION)
 
 
+def get_equipment_name(equipment_id: str) -> str:
+    return EQUIPMENT_NAMES.get(equipment_id, equipment_id)
+
+
+def get_equipment_description(equipment_id: str) -> str:
+    return EQUIPMENT_DESCRIPTIONS.get(equipment_id, PROGRESSION_NO_DESCRIPTION)
+
+
 def get_status_text(status_key: str) -> str:
     return STATUS_TEXTS.get(status_key, status_key)
+
+
+def get_slot_name(slot_id: str) -> str:
+    return {
+        "weapon": PROGRESSION_SLOT_WEAPON,
+        "offhand": PROGRESSION_SLOT_OFFHAND,
+        "accessory": PROGRESSION_SLOT_ACCESSORY,
+    }.get(slot_id, slot_id)
 
 
 def format_deployment_slot(index: int, unit_type: str, placement: tuple[int, int] | None) -> str:
@@ -206,6 +259,26 @@ def format_progression_message_cannot_equip(skill_name: str) -> str:
     return f"Cannot equip {get_skill_name(skill_name)}"
 
 
+def format_progression_message_item_equip(unit_name: str, equipment_name: str, slot_name: str) -> str:
+    return f"{unit_name} equipped {get_equipment_name(equipment_name)} in {slot_name}"
+
+
+def format_progression_message_item_cannot_equip(equipment_name: str) -> str:
+    return f"Cannot equip {get_equipment_name(equipment_name)}"
+
+
+def format_progression_message_item_unequip(unit_name: str, slot_name: str) -> str:
+    return f"{unit_name} removed equipment from {slot_name}"
+
+
+def format_progression_message_item_cannot_unequip(slot_name: str) -> str:
+    return f"No equipment in {slot_name}"
+
+
+def format_equipment_line(slot_name: str, equipment_name: str) -> str:
+    return f"{slot_name}: {equipment_name}"
+
+
 def format_battle_attack(attacker_name: str, defender_name: str, damage: int) -> str:
     return f"{attacker_name} attacks {defender_name} for {damage} damage"
 
@@ -256,4 +329,5 @@ def format_skill_menu_label(skill_name: str, power: float) -> str:
 
 def format_skill_use(user_name: str, skill_name: str, target_name: str, value: int) -> str:
     return f"{user_name} uses {get_skill_name(skill_name)} on {target_name} for {value} effect"
+
 

@@ -22,17 +22,34 @@ DEPLOYMENT_NOT_READY = "请先完成全部单位部署"
 DEPLOYMENT_UNPLACED = "未部署"
 
 PROGRESSION_TITLE = "角色成长"
+PROGRESSION_SELECT_TITLE = "选择成长角色"
+PROGRESSION_SELECT_HELP = "鼠标点击角色进入成长   滚轮/左右键：横向切换   ESC：返回"
+PROGRESSION_PROFESSION_LABEL = "职业"
+PROGRESSION_PROFESSION_UNKNOWN = "未设定"
+PROGRESSION_SUMMARY_TITLE = "角色信息"
+PROGRESSION_EQUIPMENT_HEADER = "当前装备"
 PROGRESSION_PANEL_UNITS = "角色列表"
 PROGRESSION_PANEL_STATS = "属性成长"
-PROGRESSION_PANEL_SKILLS = "技能列表"
+PROGRESSION_PANEL_SKILLS = "成长功能"
+PROGRESSION_TAB_STATS = "属性"
+PROGRESSION_TAB_SKILLS = "技能"
+PROGRESSION_TAB_EQUIPMENT = "装备"
+PROGRESSION_SKILL_SECTION = "技能列表"
+PROGRESSION_EQUIPMENT_SECTION = "装备列表"
+PROGRESSION_EQUIPMENT_SLOTS = "装备槽位"
 PROGRESSION_NO_SKILLS = "暂无可用技能"
-PROGRESSION_HELP = "鼠标：选角色/技能/加点/学习/装备   滚轮：滚动   ESC：返回"
+PROGRESSION_NO_EQUIPMENT = "当前槽位暂无可装备物品"
+PROGRESSION_HELP = "鼠标：选角色/技能/装备/加点   滚轮：滚动   ESC：返回"
 PROGRESSION_BUTTON_LEARN = "学习"
 PROGRESSION_BUTTON_EQUIP = "装备"
+PROGRESSION_BUTTON_UNEQUIP = "卸下"
 PROGRESSION_BUTTON_BACK = "返回"
 PROGRESSION_SKILL_STATE_EQUIPPED = "已装备"
 PROGRESSION_SKILL_STATE_LEARNED = "已学习"
 PROGRESSION_SKILL_STATE_LOCKED = "未学习"
+PROGRESSION_EQUIP_STATE_EQUIPPED = "当前装备"
+PROGRESSION_EQUIP_STATE_AVAILABLE = "可装备"
+PROGRESSION_EQUIP_STATE_EMPTY = "未装备"
 PROGRESSION_STATS_HEADER = "已分配属性："
 PROGRESSION_LEARNED_COUNT = "已学技能"
 PROGRESSION_EQUIPPED_COUNT = "已装技能"
@@ -42,8 +59,12 @@ PROGRESSION_EXP = "经验"
 PROGRESSION_STAT_POINTS = "属性点"
 PROGRESSION_SKILL_POINTS = "技能点"
 PROGRESSION_SKILL_DESCRIPTION = "技能说明"
+PROGRESSION_EQUIPMENT_DESCRIPTION = "装备说明"
 PROGRESSION_SKILL_BUFFS = "附带效果"
 PROGRESSION_NO_DESCRIPTION = "暂无说明"
+PROGRESSION_SLOT_WEAPON = "武器"
+PROGRESSION_SLOT_OFFHAND = "副手"
+PROGRESSION_SLOT_ACCESSORY = "饰品"
 
 RESULT_TIP = "Enter：回到主菜单   ESC：退出游戏"
 
@@ -123,6 +144,22 @@ BUFF_DESCRIPTIONS = {
     "shield": "优先吸收受到的伤害。",
 }
 
+EQUIPMENT_NAMES = {
+    "iron_sword": "铁剑",
+    "bronze_spear": "青铜枪",
+    "wooden_shield": "木盾",
+    "swift_boots": "迅捷靴",
+    "toxic_charm": "毒咒护符",
+}
+
+EQUIPMENT_DESCRIPTIONS = {
+    "iron_sword": "武器，提供攻击 +2。",
+    "bronze_spear": "武器，提供攻击 +1、防御 +1，并授予反击架势。",
+    "wooden_shield": "副手，提供防御 +2。",
+    "swift_boots": "饰品，提供移动 +1。",
+    "toxic_charm": "饰品，授予毒击技能。",
+}
+
 STATUS_TEXTS = {
     "normal": "正常",
     "acted": "已行动",
@@ -153,9 +190,28 @@ def get_buff_description(buff_id: str) -> str:
     return BUFF_DESCRIPTIONS.get(buff_id, PROGRESSION_NO_DESCRIPTION)
 
 
+def get_equipment_name(equipment_id: str) -> str:
+    """返回装备显示名称。"""
+    return EQUIPMENT_NAMES.get(equipment_id, equipment_id)
+
+
+def get_equipment_description(equipment_id: str) -> str:
+    """返回装备说明文本。"""
+    return EQUIPMENT_DESCRIPTIONS.get(equipment_id, PROGRESSION_NO_DESCRIPTION)
+
+
 def get_status_text(status_key: str) -> str:
     """返回状态文本。"""
     return STATUS_TEXTS.get(status_key, status_key)
+
+
+def get_slot_name(slot_id: str) -> str:
+    """返回装备槽位名称。"""
+    return {
+        "weapon": PROGRESSION_SLOT_WEAPON,
+        "offhand": PROGRESSION_SLOT_OFFHAND,
+        "accessory": PROGRESSION_SLOT_ACCESSORY,
+    }.get(slot_id, slot_id)
 
 
 def format_deployment_slot(index: int, unit_type: str, placement: tuple[int, int] | None) -> str:
@@ -211,6 +267,26 @@ def format_progression_message_cannot_equip(skill_name: str) -> str:
     return f"无法装备 {get_skill_name(skill_name)}"
 
 
+def format_progression_message_item_equip(unit_name: str, equipment_name: str, slot_name: str) -> str:
+    return f"{unit_name} 在{slot_name}装备了 {get_equipment_name(equipment_name)}"
+
+
+def format_progression_message_item_cannot_equip(equipment_name: str) -> str:
+    return f"无法装备 {get_equipment_name(equipment_name)}"
+
+
+def format_progression_message_item_unequip(unit_name: str, slot_name: str) -> str:
+    return f"{unit_name} 卸下了{slot_name}装备"
+
+
+def format_progression_message_item_cannot_unequip(slot_name: str) -> str:
+    return f"{slot_name} 当前没有装备可卸下"
+
+
+def format_equipment_line(slot_name: str, equipment_name: str) -> str:
+    return f"{slot_name}: {equipment_name}"
+
+
 def format_battle_attack(attacker_name: str, defender_name: str, damage: int) -> str:
     return f"{attacker_name} 攻击 {defender_name}，造成 {damage} 点伤害"
 
@@ -261,4 +337,5 @@ def format_skill_menu_label(skill_name: str, power: float) -> str:
 
 def format_skill_use(user_name: str, skill_name: str, target_name: str, value: int) -> str:
     return f"{user_name} 使用 {get_skill_name(skill_name)} 对 {target_name} 造成 {value} 点效果"
+
 

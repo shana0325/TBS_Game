@@ -5,12 +5,18 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from game.data.config_loader import ConfigLoader
+from game.data.game_database import GameDatabase
+from game.player.equipment_system import EquipmentSystem
 from game.player.player_unit_data import PlayerUnitData
 from game.player.progression_system import ProgressionSystem
 
 
 class PlayerArmy:
     """玩家单位仓库：从全局 roster 文件加载可部署单位。"""
+
+    _config_loader = ConfigLoader()
+    _game_db = GameDatabase(_config_loader)
 
     def __init__(self, roster_path: Path | None = None) -> None:
         # 中文注释：默认读取项目根目录 data/player/player_roster.json。
@@ -45,7 +51,7 @@ class PlayerArmy:
                     exp=int(entry.get("exp", 0)),
                     stat_points=int(entry.get("stat_points", 0)),
                     skill_points=int(entry.get("skill_points", 0)),
-                    equipment=self._normalize_string_list(entry.get("equipment", [])),
+                    equipment=self._normalize_equipment_map(entry.get("equipment", {})),
                     allocated_stats=self._normalize_stat_map(entry.get("allocated_stats", {})),
                     learned_skills=self._normalize_string_list(entry.get("learned_skills", [])),
                     equipped_skills=self._normalize_string_list(entry.get("equipped_skills", [])),
@@ -75,7 +81,7 @@ class PlayerArmy:
                 exp=unit.exp,
                 stat_points=unit.stat_points,
                 skill_points=unit.skill_points,
-                equipment=list(unit.equipment),
+                equipment=dict(unit.equipment),
                 allocated_stats=dict(unit.allocated_stats),
                 learned_skills=list(unit.learned_skills),
                 equipped_skills=list(unit.equipped_skills),
@@ -134,6 +140,28 @@ class PlayerArmy:
             self.save()
         return changed
 
+    def equip_item(self, unit_id: str, slot: str, equipment_id: str) -> bool:
+        """对指定角色装备物品并保存。"""
+        unit = self.find_unit(unit_id)
+        if unit is None:
+            return False
+
+        changed = EquipmentSystem.equip_item(unit, slot, equipment_id, self._game_db)
+        if changed:
+            self.save()
+        return changed
+
+    def unequip_item(self, unit_id: str, slot: str) -> bool:
+        """对指定角色卸下装备并保存。"""
+        unit = self.find_unit(unit_id)
+        if unit is None:
+            return False
+
+        changed = EquipmentSystem.unequip_item(unit, slot)
+        if changed:
+            self.save()
+        return changed
+
     @staticmethod
     def _normalize_string_list(raw_values: object) -> list[str]:
         if not isinstance(raw_values, list):
@@ -152,3 +180,25 @@ class PlayerArmy:
                 continue
             normalized[stat_name] = int(value)
         return normalized
+
+    @staticmethod
+    def _normalize_equipment_map(raw_equipment: object) -> dict[str, str | None]:
+        # 中文注释：兼容旧存档中的数组格式，自动映射到标准装备槽位。
+        empty_equipment = {"weapon": None, "offhand": None, "accessory": None}
+
+        if isinstance(raw_equipment, list):
+            for index, equipment_id in enumerate(raw_equipment[:3]):
+                normalized_id = str(equipment_id).strip()
+                if not normalized_id:
+                    continue
+                empty_equipment[EquipmentSystem.VALID_SLOTS[index]] = normalized_id
+            return empty_equipment
+
+        if not isinstance(raw_equipment, dict):
+            return empty_equipment
+
+        for slot in EquipmentSystem.VALID_SLOTS:
+            raw_value = raw_equipment.get(slot)
+            normalized_id = str(raw_value).strip() if raw_value is not None else ""
+            empty_equipment[slot] = normalized_id or None
+        return empty_equipment

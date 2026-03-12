@@ -6,6 +6,8 @@ from game.data.config_loader import ConfigLoader
 from game.data.game_database import GameDatabase
 from game.entity.skill import Skill
 from game.entity.unit import Unit, UnitConfig, UnitState
+from game.player.equipment_system import EquipmentSystem
+from game.player.player_unit_data import PlayerUnitData
 
 
 class SpawnSystem:
@@ -165,12 +167,19 @@ class SpawnSystem:
 
         overrides = unit_overrides if isinstance(unit_overrides, dict) else {}
         allocated_stats = cls._normalize_stat_map(overrides.get("allocated_stats", {}))
+        equipment_modifiers = cls._get_equipment_modifiers(overrides)
 
         config = UnitConfig(
-            hp=int(template["hp"]) + allocated_stats.get("hp", 0),
-            atk=int(template["atk"]) + allocated_stats.get("attack", 0) + allocated_stats.get("atk", 0),
-            defense=int(template["defense"]) + allocated_stats.get("defense", 0),
-            move=int(template["move"]) + allocated_stats.get("move", 0),
+            hp=int(template["hp"]) + allocated_stats.get("hp", 0) + equipment_modifiers.get("hp", 0),
+            atk=int(template["atk"])
+            + allocated_stats.get("attack", 0)
+            + allocated_stats.get("atk", 0)
+            + equipment_modifiers.get("attack", 0)
+            + equipment_modifiers.get("atk", 0),
+            defense=int(template["defense"])
+            + allocated_stats.get("defense", 0)
+            + equipment_modifiers.get("defense", 0),
+            move=int(template["move"]) + allocated_stats.get("move", 0) + equipment_modifiers.get("move", 0),
             range_min=int(template["range_min"]),
             range_max=int(template["range_max"]),
         )
@@ -188,6 +197,7 @@ class SpawnSystem:
             setattr(unit, "player_unit_id", str(overrides.get("id", "")))
         if "level" in overrides:
             setattr(unit, "level", int(overrides.get("level", 1)))
+        setattr(unit, "equipment_ids", cls._get_equipped_item_ids(overrides))
         return unit
 
     @classmethod
@@ -196,7 +206,7 @@ class SpawnSystem:
         unit_template: dict[str, object],
         unit_overrides: dict[str, object] | None = None,
     ) -> list[Skill]:
-        # 中文注释：单位技能来源 = 模板技能 + learned/equipped/extra，按顺序合并并去重。
+        # 中文注释：单位技能来源 = 模板技能 + learned/equipped/extra + 装备技能，按顺序合并并去重。
         result: list[Skill] = []
 
         overrides = unit_overrides if isinstance(unit_overrides, dict) else {}
@@ -204,9 +214,10 @@ class SpawnSystem:
         learned_skill_ids = cls._normalize_skill_ids(overrides.get("learned_skills", []))
         equipped_skill_ids = cls._normalize_skill_ids(overrides.get("equipped_skills", []))
         extra_skill_ids = cls._normalize_skill_ids(overrides.get("extra_skills", []))
+        equipment_skill_ids = cls._get_equipment_granted_skills(overrides)
 
         merged_skill_ids: list[str] = []
-        for skill_id in template_skill_ids + learned_skill_ids + equipped_skill_ids + extra_skill_ids:
+        for skill_id in template_skill_ids + learned_skill_ids + equipped_skill_ids + extra_skill_ids + equipment_skill_ids:
             if skill_id not in merged_skill_ids:
                 merged_skill_ids.append(skill_id)
 
@@ -239,6 +250,29 @@ class SpawnSystem:
 
         return result
 
+    @classmethod
+    def _get_equipment_modifiers(cls, unit_overrides: dict[str, object]) -> dict[str, int]:
+        # 中文注释：将部署数据临时转换为玩家角色对象，以复用装备系统汇总逻辑。
+        player_unit_data = cls._build_player_unit_data(unit_overrides)
+        if player_unit_data is None:
+            return {}
+        return EquipmentSystem.get_total_modifiers(player_unit_data, cls._game_db)
+
+    @classmethod
+    def _get_equipment_granted_skills(cls, unit_overrides: dict[str, object]) -> list[str]:
+        # 中文注释：读取装备提供的额外技能，并与原技能来源合并。
+        player_unit_data = cls._build_player_unit_data(unit_overrides)
+        if player_unit_data is None:
+            return []
+        return EquipmentSystem.get_granted_skills(player_unit_data, cls._game_db)
+
+    @classmethod
+    def _get_equipped_item_ids(cls, unit_overrides: dict[str, object]) -> list[str]:
+        player_unit_data = cls._build_player_unit_data(unit_overrides)
+        if player_unit_data is None:
+            return []
+        return player_unit_data.get_equipped_item_ids()
+
     @staticmethod
     def _normalize_skill_ids(raw_skill_ids: object) -> list[str]:
         # 中文注释：将配置中的技能列表标准化为字符串数组。
@@ -265,3 +299,47 @@ class SpawnSystem:
                 continue
             result[stat_name] = int(value)
         return result
+
+    @staticmethod
+    def _normalize_equipment_map(raw_equipment: object) -> dict[str, str | None]:
+        # 中文注释：兼容旧数组格式与新槽位字典格式的装备数据。
+        equipment = {"weapon": None, "offhand": None, "accessory": None}
+
+        if isinstance(raw_equipment, list):
+            slots = ("weapon", "offhand", "accessory")
+            for index, equipment_id in enumerate(raw_equipment[:3]):
+                normalized_id = str(equipment_id).strip()
+                if normalized_id:
+                    equipment[slots[index]] = normalized_id
+            return equipment
+
+        if not isinstance(raw_equipment, dict):
+            return equipment
+
+        for slot in equipment.keys():
+            raw_value = raw_equipment.get(slot)
+            normalized_id = str(raw_value).strip() if raw_value is not None else ""
+            equipment[slot] = normalized_id or None
+        return equipment
+
+    @classmethod
+    def _build_player_unit_data(cls, unit_overrides: dict[str, object]) -> PlayerUnitData | None:
+        if not isinstance(unit_overrides, dict):
+            return None
+        unit_type = str(unit_overrides.get("type", "")).strip()
+        if not unit_type:
+            return None
+
+        return PlayerUnitData(
+            unit_id=str(unit_overrides.get("id", unit_type)),
+            unit_type=unit_type,
+            level=int(unit_overrides.get("level", 1)),
+            exp=int(unit_overrides.get("exp", 0)),
+            stat_points=int(unit_overrides.get("stat_points", 0)),
+            skill_points=int(unit_overrides.get("skill_points", 0)),
+            equipment=cls._normalize_equipment_map(unit_overrides.get("equipment", {})),
+            allocated_stats=cls._normalize_stat_map(unit_overrides.get("allocated_stats", {})),
+            learned_skills=cls._normalize_skill_ids(unit_overrides.get("learned_skills", [])),
+            equipped_skills=cls._normalize_skill_ids(unit_overrides.get("equipped_skills", [])),
+            extra_skills=cls._normalize_skill_ids(unit_overrides.get("extra_skills", [])),
+        )

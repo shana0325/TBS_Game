@@ -1,4 +1,4 @@
-﻿"""玩家角色数据模型：保存玩家持有单位的成长与技能状态。"""
+﻿"""玩家角色数据模型：保存玩家持有单位的成长、技能与装备状态。"""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ class PlayerUnitData:
     exp: int = 0
     stat_points: int = 0
     skill_points: int = 0
-    equipment: list[str] = field(default_factory=list)
+    equipment: dict[str, str | None] = field(default_factory=dict)
     allocated_stats: dict[str, int] = field(default_factory=dict)
     learned_skills: list[str] = field(default_factory=list)
     equipped_skills: list[str] = field(default_factory=list)
@@ -30,9 +30,17 @@ class PlayerUnitData:
             "exp": self.exp,
             "stat_points": self.stat_points,
             "skill_points": self.skill_points,
-            "equipment": list(self.equipment),
+            "equipment": dict(self.equipment),
             "allocated_stats": dict(self.allocated_stats),
             "learned_skills": list(self.learned_skills),
             "equipped_skills": list(self.equipped_skills),
             "extra_skills": list(self.extra_skills),
         }
+
+    def get_equipped_item_ids(self) -> list[str]:
+        """返回当前角色已装备的物品 id 列表。"""
+        result: list[str] = []
+        for equipment_id in self.equipment.values():
+            if equipment_id:
+                result.append(equipment_id)
+        return result

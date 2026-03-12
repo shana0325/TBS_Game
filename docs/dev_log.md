@@ -148,3 +148,15 @@
 - Added unified font management with `assets/fonts/LXGWWenKai-Light.ttf` and `game/ui/font_manager.py`, so UI modules no longer load fonts independently.
 - Split text resources into `game/core/i18n/zh_cn.py` and `game/core/i18n/en_us.py`, kept `game/core/texts.py` as a compatibility facade, and added runtime language switching via `F2` plus `TBS_LANG`.
 - Extended text entry points with skill descriptions, buff descriptions, and status texts, then connected them to `ProgressionScreen` and `UnitInfoPanel`.
+
+## Stage 38 - Equipment System
+- Added `data/equipment/equipments.json`, `Equipment` entity, and `EquipmentSystem` for slot validation, modifier aggregation, and granted skills.
+- Upgraded player roster equipment data to `weapon / offhand / accessory` slots and applied equipment effects in `SpawnSystem`.
+
+## Stage 39 - Progression Tabs Refactor
+- Split the old crowded growth UI into `属性 / 技能 / 装备` three-tab panels.
+- Extracted `ProgressionTabs`, `ProgressionStatPanel`, `ProgressionSkillPanel`, and `ProgressionEquipmentPanel`, shrinking `ProgressionScreen` into a dispatcher-style screen.
+
+## Stage 40 - Character Select Progression Flow
+- Added `ProgressionCharacterSelectScreen` as a pre-growth role selection step with horizontal character cards.
+- Converted `ProgressionScreen` into a single-character growth screen and added `ProgressionUnitSummaryPanel` for the left-side character summary.

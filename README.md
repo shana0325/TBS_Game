@@ -26,6 +26,8 @@ TBS_Game/
       skills.json
     buff/
       buffs.json
+    equipment/
+      equipments.json
     player/
       player_roster.json
 
@@ -83,6 +85,7 @@ TBS_Game/
 
     entity/
       buff.py
+      equipment.py
       skill.py
       unit.py
 
@@ -97,6 +100,7 @@ TBS_Game/
         spawn_system.py
 
     player/
+      equipment_system.py
       player_army.py
       player_unit_data.py
       progression_system.py
@@ -112,6 +116,7 @@ TBS_Game/
       deployment_screen.py
       level_select_screen.py
       main_menu_screen.py
+      progression_character_select_screen.py
       progression_screen.py
       result_screen.py
       screen_base.py
@@ -136,6 +141,11 @@ TBS_Game/
       skill_menu.py
       ui_system.py
       unit_info_panel.py
+      progression_tabs.py
+      progression_stat_panel.py
+      progression_skill_panel.py
+      progression_equipment_panel.py
+      progression_unit_summary_panel.py
 
     save/
       save_manager.py
@@ -149,28 +159,26 @@ TBS_Game/
 - Combat System: 已完成伤害计算、攻击距离判定、跨战场攻击规则，以及事件驱动的反击/触发能力。
 - Turn System: 已完成阵营切换、已行动状态管理、Buff 回合节点处理与事件派发。
 - Enemy AI: 已支持基础攻击、移动、等待逻辑，并可在敌方回合逐单位执行。
-- CLI integration test: 早期已完成 CLI 验证，用于确认核心逻辑可独立运行。
-- Pygame rendering: 已完成地图、单位、移动范围、攻击范围、路径预览渲染。
-- HUD UI: 基础 HUD 已保留，当前主战斗信息主要由 `UnitInfoPanel`、`ActionMenu`、`BattleLogPanel` 承担。
-- Screen System: 已完成 `MainMenu -> LevelSelect -> Deployment -> Battle -> Result` 流程。
+- Screen System: 已完成 `MainMenu -> LevelSelect -> ProgressionCharacterSelect -> Progression -> Deployment -> Battle -> Result` 流程。
 - Deployment System: 已支持部署阶段读取全局玩家编成并放置到部署区。
 - Skill / Effect System: 技能已切换为 `EffectSystem` 驱动，支持 `damage / heal / buff / summon / revive`。
 - Buff System: 已支持属性增益、DOT/HOT、Stun、Silence、Shield、Counter、Aura 等效果基础。
 - Event System: 已完成集中式战斗事件分发，用于命中、击杀、回合开始/结束等触发逻辑。
 - Progression System: 已支持 EXP、升级、属性点、技能点、学习技能、装备技能，并写回 `player_roster.json`。
+- Equipment System: 已支持 `weapon / offhand / accessory` 三槽位、装备属性修正、装备赋予技能，并在 `SpawnSystem` 中装配到战斗单位。
+- Progression UI: 已改为两段式流程，先选择角色，再进入单角色成长界面；成长界面内部拆为 `属性 / 技能 / 装备` 三个子页。
 - Scrollable UI: 已新增通用 `ScrollableList` 组件，统一战斗日志与成长界面的滚动行为与滚动条样式。
 - Text / Font / i18n System: 已完成统一字体入口、统一文案入口与中英文语言包拆分，支持运行时切换语言。
 
 ## Gameplay (Current Prototype)
 
-- 主流程：`Main Menu -> Level Select -> Progression / Deployment -> Battle -> Result`
-- 选关界面可进入成长界面，在战斗前查看并调整角色成长。
-- 成长界面当前支持：
-  - 鼠标点击选择角色
-  - 鼠标点击属性 `+` 按钮加点
-  - 鼠标选择技能并点击 `Learn / Equip`
-  - 查看当前技能说明与附带 Buff 说明
-  - 滚轮滚动单位列表、属性列表、技能列表
+- 主流程：`Main Menu -> Level Select -> Progression Character Select / Deployment -> Battle -> Result`
+- 选关界面可进入角色选择成长界面，再选择一个角色进入单角色成长页面。
+- 单角色成长界面当前支持：
+  - `属性` 页签：查看角色信息并进行属性加点
+  - `技能` 页签：学习技能、装备技能、查看技能与 Buff 说明
+  - `装备` 页签：查看装备槽、切换装备、卸下装备、查看装备说明
+- 角色选择界面会显示角色名称、等级、职业占位与当前装备，并支持横向切换多个角色。
 - 部署阶段会从全局 `PlayerArmy` 读取玩家单位，并决定出战位置。
 - 战斗阶段支持 `Move / Attack / Skill / Wait`，敌方回合自动执行 AI 行动。
 - 运行中按 `F2` 可切换中文 / 英文；启动时可通过 `TBS_LANG` 设定默认语言。
@@ -179,11 +187,10 @@ TBS_Game/
 
 ## Next Possible Improvements
 
-- 为 `ProgressionScreen` 增加技能说明、职业限制、前置技能和禁用态提示。
-- 将技能名、Buff 名本身也纳入语言包，而不只翻译说明文本。
-- 将 `SkillMenu`、`ActionMenu` 也统一迁移到 `ScrollableList` 风格。
-- 增加成长界面中的技能分类、分页和角色详情面板。
-- 增加装备系统、背包系统和更完整的存档读写。
+- 为角色选择界面增加职业图标、角色立绘、战斗定位标签与筛选条件。
+- 在单角色成长界面显示装备带来的属性汇总变化和技能来源（模板/学习/装备）。
+- 为装备系统补充职业限制、装备类型限制和背包库存概念。
+- 增加成长界面中的技能分类、分页和前置技能关系。
 - 扩展战斗技能效果：AOE、位移、召唤控制区、持续光环刷新提示。
 - 为 Battle Log 增加筛选、自动跳到最新、分页与高亮关键事件能力。
 
@@ -192,4 +199,3 @@ TBS_Game/
 - 当前版本重点仍然是架构验证、模块边界清晰，以及 data-driven 设计可扩展性。
 - 游戏逻辑与 pygame 渲染/UI 保持分层，便于后续继续扩展成长、关卡与复杂战斗机制。
 - 文本显示当前统一经由 `game/core/texts.py` 入口分发；字体统一经由 `game/ui/font_manager.py` 管理。
-

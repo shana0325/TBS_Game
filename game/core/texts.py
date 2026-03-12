@@ -38,6 +38,16 @@ def get_buff_description(buff_id: str) -> str:
     return get_locale_module().get_buff_description(buff_id)
 
 
+def get_equipment_name(equipment_id: str) -> str:
+    """返回装备显示名称。"""
+    return get_locale_module().get_equipment_name(equipment_id)
+
+
+def get_equipment_description(equipment_id: str) -> str:
+    """返回装备说明。"""
+    return get_locale_module().get_equipment_description(equipment_id)
+
+
 def get_status_text(status_key: str) -> str:
     """返回状态文案。"""
     return get_locale_module().get_status_text(status_key)
