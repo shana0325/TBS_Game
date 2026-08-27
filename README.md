@@ -1,4 +1,10 @@
-﻿# TBS Game Prototype
+> ⚠️ **本仓库已迁移**：游戏已用 Godot 4.7 + GDScript 重写为自走棋玩法（时间驱动独立回合、事件触发技能、技能双轨、永久成长），请前往 **[TBS_Game_Godot](https://github.com/shana0325/TBS_Game_Godot)**。
+
+> 本仓库为早期 Python + Pygame 回合制原型，仅保留历史记录，不再主动维护。
+
+---
+
+# TBS Game Prototype
 
 This repository contains a Python 2D turn-based strategy (TBS) prototype focused on validating modular battle systems, screen flow, and data-driven combat growth end-to-end.
 
